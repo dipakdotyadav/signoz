@@ -17,7 +17,6 @@ import {
 	type GroupSave,
 	MAPPING_GROUP_MAX,
 	spanMapperGroupsResponse,
-	spanMappersResponse,
 	wideConditionGroupsResponse,
 } from './__story_mockdata__/attributeMapping';
 
@@ -30,15 +29,6 @@ export const wideConditionGroup = rest.get(
 	'http://localhost/api/v1/span_mapper_groups',
 	(_req, res, ctx) =>
 		res(ctx.status(200), ctx.json(wideConditionGroupsResponse())),
-);
-
-export const groupMappers = rest.get(
-	'http://localhost/api/v1/span_mapper_groups/:groupId/span_mappers',
-	(req, res, ctx) =>
-		res(
-			ctx.status(200),
-			ctx.json(spanMappersResponse(String(req.params.groupId))),
-		),
 );
 
 export const attributeMappingMocks = defineStoryMocks({

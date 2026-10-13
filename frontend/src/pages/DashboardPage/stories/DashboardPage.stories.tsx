@@ -299,7 +299,10 @@ export const NewPanelPickerTypeSelected: Story = {
 export const NewPanelPickerSearch: Story = {
 	play: async ({ canvasElement }) => {
 		await openNewPanelPicker(canvasElement);
-		await userEvent.type(await screen.findByTestId('panel-type-search'), 'heat');
+		await userEvent.type(
+			await screen.findByTestId('panel-type-search-field'),
+			'heat',
+		);
 	},
 };
 
@@ -333,7 +336,7 @@ export const NewPanelPickerNewSection: Story = {
 		);
 		await userEvent.click(await screen.findByTestId('panel-section-create'));
 		await userEvent.type(
-			await screen.findByTestId('panel-section-name'),
+			await screen.findByTestId('panel-section-name-field'),
 			'Errors',
 		);
 	},
@@ -401,7 +404,7 @@ export const DashboardClonedToast: Story = {
 export const DashboardRenamedToast: Story = {
 	play: async ({ canvasElement, args }): Promise<void> => {
 		await clickAction(canvasElement, 'Rename');
-		const input = await screen.findByTestId('dashboard-title-input');
+		const input = await screen.findByTestId('dashboard-title-input-field');
 		await userEvent.clear(input);
 		await userEvent.type(input, 'Service overview (renamed){enter}');
 		if (args.dashboardPatch === 'success') {

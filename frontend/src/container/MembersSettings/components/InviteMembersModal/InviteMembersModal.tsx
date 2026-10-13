@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { X } from '@signozhq/icons';
 import { Button } from '@signozhq/ui/button';
 import { DialogWrapper } from '@signozhq/ui/dialog';
-import { toast } from '@signozhq/ui/sonner';
+import { toast } from '@signozhq/ui/toast';
 import InviteMembers from 'components/InviteMembers/InviteMembers';
 import AuthZButton from 'lib/authz/components/AuthZButton/AuthZButton';
 import { UserCreatePermission } from 'lib/authz/hooks/useAuthZ/permissions/user.permissions';

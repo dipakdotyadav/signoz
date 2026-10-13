@@ -118,7 +118,7 @@ export const AwaitingClarification: Story = {
 	args: { agent: 'awaiting-clarification', contents: BRIEF },
 };
 
-/** The severity select open, including the free-text option the form's Select renders. */
+/** The severity select open, including the free-text option the new Select renders. */
 export const ClarificationSelectOpen: Story = {
 	args: { agent: 'awaiting-clarification', contents: BRIEF },
 	play: openClarificationSelect,
@@ -216,7 +216,7 @@ export const NegativeFeedback: Story = {
 	},
 };
 
-/** Renaming a thread: the title input the row swaps in. */
+/** Renaming a thread: the chromeless title input the row swaps in. */
 export const ConversationRename: Story = {
 	play: renameConversation,
 };
