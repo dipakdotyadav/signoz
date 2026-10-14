@@ -42,7 +42,6 @@ function InviteMembersModal({
 			}}
 			showCloseButton
 			width="wide"
-			className="invite-members-modal"
 		>
 			<InviteMembers
 				onSuccess={handleSuccess}
