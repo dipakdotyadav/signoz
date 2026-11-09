@@ -762,6 +762,7 @@ function EditMemberDrawer({
 		<>
 			<Drawer
 				type="task"
+				stack="overlay"
 				open={open}
 				onClose={handleClose}
 				title="Member Details"
