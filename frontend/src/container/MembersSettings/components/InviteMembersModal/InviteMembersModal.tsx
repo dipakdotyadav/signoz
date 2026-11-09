@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { X } from '@signozhq/icons';
 import { Button } from '@signozhq/ui/button';
-import { DialogWrapper } from '@signozhq/ui/dialog';
+import { Dialog } from '@signozhq/ui/dialog';
 import { toast } from '@signozhq/ui/toast';
 import InviteMembers from 'components/InviteMembers/InviteMembers';
 import AuthZButton from 'lib/authz/components/AuthZButton/AuthZButton';
@@ -32,15 +32,10 @@ function InviteMembersModal({
 	}, [onComplete]);
 
 	return (
-		<DialogWrapper
+		<Dialog
 			title="Invite Team Members"
 			open={open}
-			onOpenChange={(isOpen): void => {
-				if (!isOpen) {
-					onClose();
-				}
-			}}
-			showCloseButton
+			onClose={onClose}
 			width="wide"
 		>
 			<InviteMembers
@@ -77,7 +72,7 @@ function InviteMembersModal({
 					</div>
 				)}
 			/>
-		</DialogWrapper>
+		</Dialog>
 	);
 }
 
