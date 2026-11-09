@@ -197,7 +197,7 @@ export const renameDashboard = async ({
 
 	await openRowActions(canvasElement, 1);
 	await pickRowAction('Rename');
-	const input = await screen.findByTestId('rename-dashboard-input');
+	const input = await screen.findByTestId('rename-dashboard-input-field');
 
 	await userEvent.clear(input);
 	await userEvent.type(input, 'API latency overview');
@@ -493,7 +493,7 @@ export const saveView = async ({
 			{ timeout: TOAST_TIMEOUT },
 		),
 	);
-	await userEvent.type(await screen.findByTestId('save-view-name'), 'On-call');
+	await userEvent.type(await screen.findByTestId('save-view-name-field'), 'On-call');
 	await userEvent.click(await screen.findByTestId('save-view-confirm'));
 	if (args.viewWrite === 'error') {
 		await screen.findByText(
@@ -523,7 +523,7 @@ export const renameView = async ({
 
 	// The actions only take pointer events while the row is hovered by CSS.
 	await userEvent.click(rename, { pointerEventsCheck: 0 });
-	const input = await screen.findByTestId('rename-view-name');
+	const input = await screen.findByTestId('rename-view-name-field');
 
 	await userEvent.clear(input);
 	await userEvent.type(input, 'Renamed view');
