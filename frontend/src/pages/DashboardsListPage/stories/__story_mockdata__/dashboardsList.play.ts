@@ -317,18 +317,12 @@ export const pinDashboard = async ({
 		),
 	);
 	if (args.pinWrite === 'limit') {
-		await screen.findByText(
-			/You can pin up to 10 dashboards/,
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText(/You can pin up to 10 dashboards/, {
+			timeout: TOAST_TIMEOUT,
+		});
 	}
 	if (args.pinWrite === 'error') {
-		await screen.findByText(
-			'Failed to pin dashboard.',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Failed to pin dashboard.', { timeout: TOAST_TIMEOUT });
 	}
 };
 
@@ -349,11 +343,7 @@ export const unpinDashboard = async ({
 		),
 	);
 	if (args.pinWrite === 'error') {
-		await screen.findByText(
-			'Failed to unpin dashboard.',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Failed to unpin dashboard.', { timeout: TOAST_TIMEOUT });
 	}
 };
 
@@ -390,11 +380,7 @@ export const migrateDashboard = async ({
 		);
 	}
 	if (args.migrationWrite === 'error') {
-		await screen.findByText(
-			'Something went wrong',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Something went wrong', { timeout: TOAST_TIMEOUT });
 	}
 };
 
@@ -431,11 +417,7 @@ export const importInvalidImage = async ({
 		image: 'https://example.com/logo.png',
 		spec: { display: { name: 'Imported' }, ...IMPORTED_SPEC },
 	});
-	await screen.findByText(
-		/Dashboard "image" must be/,
-		{},
-		{ timeout: TOAST_TIMEOUT },
-	);
+	await findToastText(/Dashboard "image" must be/, { timeout: TOAST_TIMEOUT });
 };
 
 export const importDashboard = async ({
@@ -469,11 +451,9 @@ export const submitTemplateRequest = async ({
 	}
 
 	await requestTemplate(canvasElement);
-	await screen.findByText(
-		TEMPLATE_REQUEST_TOASTS[args.templateRequest],
-		{},
-		{ timeout: TOAST_TIMEOUT },
-	);
+	await findToastText(TEMPLATE_REQUEST_TOASTS[args.templateRequest], {
+		timeout: TOAST_TIMEOUT,
+	});
 };
 
 export const saveView = async ({
@@ -497,11 +477,7 @@ export const saveView = async ({
 	);
 	await userEvent.click(await screen.findByTestId('save-view-confirm'));
 	if (args.viewWrite === 'error') {
-		await screen.findByText(
-			'Failed to save view.',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Failed to save view.', { timeout: TOAST_TIMEOUT });
 	}
 };
 
@@ -530,11 +506,7 @@ export const renameView = async ({
 	await userEvent.type(input, 'Renamed view');
 	await userEvent.click(await screen.findByTestId('rename-view-confirm'));
 	if (args.viewWrite === 'error') {
-		await screen.findByText(
-			'Failed to update view.',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Failed to update view.', { timeout: TOAST_TIMEOUT });
 	}
 };
 
@@ -559,10 +531,6 @@ export const deleteView = async ({
 		await within(dialog).findByRole('button', { name: 'Delete' }),
 	);
 	if (args.viewWrite === 'error') {
-		await screen.findByText(
-			'Failed to delete view.',
-			{},
-			{ timeout: TOAST_TIMEOUT },
-		);
+		await findToastText('Failed to delete view.', { timeout: TOAST_TIMEOUT });
 	}
 };
