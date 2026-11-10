@@ -23,7 +23,7 @@ import {
 	openFirstRowActions,
 	openRenameDialog,
 	openRenameViewPopover,
-	openSaveViewPopover,
+	openSaveViewDialog,
 	openTemplateTab,
 	pinDashboard,
 	renameDashboard,
@@ -139,9 +139,9 @@ export const EditTagsDialog: Story = {
 	play: openEditTagsDialog,
 };
 
-/** The popover that names the current filters as a new saved view. */
+/** The dialog that names the current filters as a new saved view. */
 export const SaveView: Story = {
-	play: openSaveViewPopover,
+	play: openSaveViewDialog,
 };
 
 /** A saved view's rename popover, opened from its row. */
