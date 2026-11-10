@@ -22,7 +22,7 @@ import {
 	openEditTagsDialog,
 	openFirstRowActions,
 	openRenameDialog,
-	openRenameViewPopover,
+	openRenameViewDialog,
 	openSaveViewDialog,
 	openTemplateTab,
 	pinDashboard,
@@ -144,9 +144,9 @@ export const SaveView: Story = {
 	play: openSaveViewDialog,
 };
 
-/** A saved view's rename popover, opened from its row. */
+/** A saved view's rename dialog, opened from its row. */
 export const RenameView: Story = {
-	play: openRenameViewPopover,
+	play: openRenameViewDialog,
 };
 
 /** The renamed toast, raised once the PATCH answers. */
