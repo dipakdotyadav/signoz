@@ -926,11 +926,10 @@ function OnboardingAddDataSource(): JSX.Element {
 															}`}
 														>
 															<Typography
-																// TODO(typography): interactive hover color has no equivalent
 																variant="uppercase"
 																size="small"
 																weight="medium"
-																color={selectedCategory === 'All' ? 'inherit' : 'secondary'}
+																color="inherit"
 																as="span"
 																textOverflow="wrap"
 															>
@@ -973,11 +972,10 @@ function OnboardingAddDataSource(): JSX.Element {
 																}`}
 															>
 																<Typography
-																	// TODO(typography): interactive hover color has no equivalent
 																	variant="uppercase"
 																	size="small"
 																	weight="medium"
-																	color={selectedCategory === tag ? 'inherit' : 'secondary'}
+																	color="inherit"
 																	as="span"
 																	textOverflow="wrap"
 																>
