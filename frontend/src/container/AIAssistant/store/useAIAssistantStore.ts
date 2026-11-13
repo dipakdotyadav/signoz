@@ -203,6 +203,7 @@ function resetStreamingState(
 		streamingActions: null,
 		pendingApproval: null,
 		pendingClarification: null,
+		startedAt: Date.now(),
 	};
 }
 
@@ -973,6 +974,7 @@ export const useAIAssistantStore = create<AIAssistantStore>()(
 								// compatible with the SSE event DTOs used by ConversationStreamState.
 								pendingApproval: detail.pendingApproval ?? null,
 								pendingClarification: detail.pendingClarification ?? null,
+								startedAt: null,
 							};
 						}
 						s.isLoadingThread = false;
