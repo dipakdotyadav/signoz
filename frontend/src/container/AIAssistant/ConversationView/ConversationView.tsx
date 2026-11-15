@@ -26,6 +26,7 @@ export default function ConversationView({
 }: ConversationViewProps): JSX.Element {
 	const variant = useVariant();
 	const isCompact = variant === 'panel';
+	const isFullPage = variant === 'page';
 	const location = useAppLocation();
 
 	const conversation = useAIAssistantStore(
@@ -190,8 +191,12 @@ export default function ConversationView({
 		inputDisabledTooltip = 'Answer the pending question first';
 	}
 
+	const conversationClass = cx(styles.conversation, {
+		[styles.fullPage]: isFullPage,
+	});
 	const inputWrapperClass = cx(styles.inputWrapper, {
 		[styles.compact]: isCompact,
+		[styles.fullPage]: isFullPage,
 	});
 	const disclaimerClass = cx(styles.disclaimer, {
 		[styles.compact]: isCompact,
@@ -205,7 +210,7 @@ export default function ConversationView({
 	const isHydrating = Boolean(conversation?.isHydrating);
 	if ((isLoadingThread || isHydrating) && messages.length === 0) {
 		return (
-			<div className={styles.conversation}>
+			<div className={conversationClass}>
 				<ConversationSkeleton />
 				<div className={inputWrapperClass}>
 					<ChatInput
@@ -222,7 +227,7 @@ export default function ConversationView({
 	}
 
 	return (
-		<div className={styles.conversation}>
+		<div className={conversationClass}>
 			<VirtualizedMessages
 				key={conversationId}
 				conversationId={conversationId}

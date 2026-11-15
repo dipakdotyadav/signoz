@@ -15,6 +15,12 @@
 	}
 }
 
+// The full page keeps the thread in a 672px column; the extra 32px is the rows' own gutters.
+.row.fullPage {
+	max-width: 704px;
+	margin: 0 auto;
+}
+
 // The list, and right after the first send the empty state fading out over it.
 .thread {
 	position: relative;
