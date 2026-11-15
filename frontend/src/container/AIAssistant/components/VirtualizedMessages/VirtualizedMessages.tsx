@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import cx from 'classnames';
+import { Button } from '@signozhq/ui/button';
+import { ArrowDown } from '@signozhq/icons';
 
 import logEvent from 'api/common/logEvent';
 
@@ -15,9 +17,12 @@ import StreamingMessage from '../StreamingMessage';
 import EmptyState from './EmptyState/EmptyState';
 import styles from './VirtualizedMessages.module.scss';
 import { useFirstMessageFloat } from './useFirstMessageFloat';
+import { useScrollToSentMessage } from './useScrollToSentMessage';
 
 const EMPTY_EVENTS: StreamingEventItem[] = [];
 const EMPTY_STATE_EXIT_MS = 400;
+// Far enough that every row above the view stays rendered.
+const KEEP_ROWS_ABOVE_PX = 1_000_000;
 
 interface VirtualizedMessagesProps {
 	conversationId: string;
@@ -53,13 +58,6 @@ export default function VirtualizedMessages({
 	const streamingEvents = useAIAssistantStore(
 		(s) => s.streams[conversationId]?.streamingEvents ?? EMPTY_EVENTS,
 	);
-	// Text deltas append into the last `streamingEvents` entry rather than
-	// pushing a new one, so `streamingEvents.length` doesn't grow as the
-	// assistant streams text. Tracking the content length gives us a per-chunk
-	// scroll trigger.
-	const streamingContentLength = useAIAssistantStore(
-		(s) => s.streams[conversationId]?.streamingContent.length ?? 0,
-	);
 	const pendingApproval = useAIAssistantStore(
 		(s) => s.streams[conversationId]?.pendingApproval ?? null,
 	);
@@ -68,17 +66,15 @@ export default function VirtualizedMessages({
 	);
 
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
-	const scrollerRef = useRef<HTMLElement | Window | null>(null);
-	// Tracks whether the scroller is pinned to (or near) the bottom. Updated
-	// via Virtuoso's `atBottomStateChange` so we can stop force-scrolling the
-	// user back down when they've intentionally scrolled up to read earlier
-	// content.
-	const atBottomRef = useRef(true);
-	// Id of the latest user message we've already anchored to. Used to detect
-	// a fresh user send so we can re-anchor to the bottom regardless of where
-	// the user was scrolled — sending a message and not seeing it is worse
-	// than the anti-yank guarantee.
-	const lastSeenUserMessageIdRef = useRef<string | null>(null);
+	const [isAtBottom, setIsAtBottom] = useState(true);
+	useScrollToSentMessage(virtuosoRef, messages);
+	const jumpToLatest = useCallback((): void => {
+		virtuosoRef.current?.scrollToIndex({
+			index: 'LAST',
+			align: 'end',
+			behavior: 'smooth',
+		});
+	}, []);
 	const threadRef = useRef<HTMLDivElement>(null);
 	// The fading copy is for show: no focus, no clicks, nothing announced.
 	const makeInert = useCallback((element: HTMLDivElement | null): void => {
@@ -114,62 +110,6 @@ export default function VirtualizedMessages({
 		void retryAssistantMessage(conversationId);
 	}, [conversationId, isStreaming, retryAssistantMessage, threadId]);
 
-	// Scroll all the way to the actual bottom — including the 64px of bottom
-	// padding on the scroller — so the last bubble has visible breathing room
-	// above the disclaimer / input bar. Virtuoso's `scrollToIndex(LAST,
-	// align: 'end')` would only reach the last item's bottom and leave the
-	// padding hidden below the fold. Use `auto` while streaming so the bottom
-	// stays glued as text deltas arrive; `smooth` lags when triggered every
-	// few ms. Bail out if the user has scrolled away from the bottom — that's
-	// an explicit signal they want to read earlier content without being
-	// yanked back.
-	useEffect(() => {
-		const lastMessage = messages[messages.length - 1];
-		const isFreshUserSend =
-			lastMessage?.role === 'user' &&
-			lastMessage.id !== lastSeenUserMessageIdRef.current;
-		if (isFreshUserSend) {
-			lastSeenUserMessageIdRef.current = lastMessage.id;
-			// Re-anchor so the user sees their own send (and the assistant's
-			// follow-up streaming) even if they were reading history when they
-			// hit Enter.
-			atBottomRef.current = true;
-		}
-
-		if (!atBottomRef.current) {
-			return;
-		}
-		const scroller = scrollerRef.current;
-		if (!(scroller instanceof HTMLElement)) {
-			return;
-		}
-		scroller.scrollTo({
-			top: scroller.scrollHeight,
-			behavior: isStreaming ? 'auto' : 'smooth',
-		});
-	}, [
-		messages,
-		streamingEvents.length,
-		streamingContentLength,
-		isStreaming,
-		pendingApproval,
-		pendingClarification,
-	]);
-
-	const followOutput = useCallback(
-		(atBottom: boolean): false | 'auto' | 'smooth' => {
-			if (!atBottom) {
-				return false;
-			}
-			return isStreaming ? 'auto' : 'smooth';
-		},
-		[isStreaming],
-	);
-
-	const handleAtBottomStateChange = useCallback((atBottom: boolean): void => {
-		atBottomRef.current = atBottom;
-	}, []);
-
 	const showStreamingSlot =
 		isStreaming || Boolean(pendingApproval) || Boolean(pendingClarification);
 	const isEmptyState = messages.length === 0 && !showStreamingSlot;
@@ -189,17 +129,20 @@ export default function VirtualizedMessages({
 		<div ref={threadRef} className={styles.thread}>
 			<Virtuoso
 				ref={virtuosoRef}
-				scrollerRef={(ref): void => {
-					scrollerRef.current = ref;
-				}}
 				className={styles.messages}
 				totalCount={totalCount}
-				followOutput={followOutput}
-				atBottomStateChange={handleAtBottomStateChange}
+				atBottomStateChange={setIsAtBottom}
 				atBottomThreshold={64}
-				initialTopMostItemIndex={Math.max(0, totalCount - 1)}
+				// End-aligned: a short thread shows from its first message, a long one opens on the latest.
+				initialTopMostItemIndex={{ index: 'LAST', align: 'end' }}
+				// Once a row above the view unmounts, Virtuoso shifts the view by however much the thread grows.
+				increaseViewportBy={{ top: KEEP_ROWS_ABOVE_PX, bottom: 0 }}
 				itemContent={(index): JSX.Element => {
-					const rowClass = cx(styles.row, { [styles.fullPage]: isFullPage });
+					const rowClass = cx(styles.row, {
+						[styles.fullPage]: isFullPage,
+						[styles.first]: index === 0,
+						[styles.last]: index === totalCount - 1,
+					});
 					if (index < messages.length) {
 						const msg = messages[index];
 						const isLastAssistant =
@@ -237,6 +180,22 @@ export default function VirtualizedMessages({
 					);
 				}}
 			/>
+			{!isAtBottom && (
+				<div className={styles.latest}>
+					<Button
+						variant="solid"
+						color="secondary"
+						size="sm"
+						prefix={<ArrowDown size={14} />}
+						onClick={jumpToLatest}
+						testId="ai-assistant-latest"
+					>
+						<span className={cx({ [styles.latestStreaming]: isStreaming })}>
+							Latest
+						</span>
+					</Button>
+				</div>
+			)}
 			{isEmptyStateExiting && (
 				<div
 					ref={makeInert}
