@@ -128,6 +128,52 @@ export default function ConversationView({
 
 	const messages = conversation?.messages ?? [];
 	const showDisclaimer = messages.length > 0;
+
+	// When this chat's first message went out; drives the empty state's exit across a remount.
+	const firstMessageId = messages[0]?.id;
+	const isLoadingHere = isLoadingThread || Boolean(conversation?.isHydrating);
+	const [firstSend, setFirstSend] = useState<{
+		conversationId: string;
+		messageCount: number;
+		firstMessageId: string | undefined;
+		isLoading: boolean;
+		at: number | null;
+	}>({
+		conversationId,
+		messageCount: messages.length,
+		firstMessageId,
+		isLoading: isLoadingHere,
+		at: null,
+	});
+	if (
+		firstSend.conversationId !== conversationId ||
+		firstSend.messageCount !== messages.length ||
+		firstSend.isLoading !== isLoadingHere
+	) {
+		// A loaded thread arrives while loading; a send adds the user's own first message.
+		const isFirstSend =
+			firstSend.conversationId === conversationId &&
+			firstSend.messageCount === 0 &&
+			!firstSend.isLoading &&
+			messages.length === 1 &&
+			messages[0].role === 'user' &&
+			isStreamingHere;
+		// Renaming to the server's thread id keeps the first message; another chat starts clean.
+		const isSameChat =
+			firstSend.firstMessageId !== undefined &&
+			firstSend.firstMessageId === firstMessageId;
+		let at = isSameChat ? firstSend.at : null;
+		if (isFirstSend) {
+			at = Date.now();
+		}
+		setFirstSend({
+			conversationId,
+			messageCount: messages.length,
+			firstMessageId,
+			isLoading: isLoadingHere,
+			at,
+		});
+	}
 	const inputDisabled =
 		isStreamingHere ||
 		isLoadingThread ||
@@ -182,6 +228,7 @@ export default function ConversationView({
 				conversationId={conversationId}
 				messages={messages}
 				isStreaming={isStreamingHere}
+				firstSendAt={firstSend.at}
 				onSendSuggestedPrompt={(text): void => {
 					handleSend(
 						text,

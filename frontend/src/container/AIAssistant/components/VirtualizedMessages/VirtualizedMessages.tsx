@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 
 import logEvent from 'api/common/logEvent';
@@ -12,13 +12,17 @@ import StreamingMessage from '../StreamingMessage';
 
 import EmptyState from './EmptyState/EmptyState';
 import styles from './VirtualizedMessages.module.scss';
+import { useFirstMessageFloat } from './useFirstMessageFloat';
 
 const EMPTY_EVENTS: StreamingEventItem[] = [];
+const EMPTY_STATE_EXIT_MS = 400;
 
 interface VirtualizedMessagesProps {
 	conversationId: string;
 	messages: Message[];
 	isStreaming: boolean;
+	/** When this chat's first message went out; plays the empty state's exit. */
+	firstSendAt: number | null;
 	/**
 	 * Called when a user clicks an empty-state suggested prompt. Routed
 	 * through the parent so analytics (Message sent) fire with the same
@@ -31,6 +35,7 @@ export default function VirtualizedMessages({
 	conversationId,
 	messages,
 	isStreaming,
+	firstSendAt,
 	onSendSuggestedPrompt,
 }: VirtualizedMessagesProps): JSX.Element {
 	const regenerateAssistantMessage = useAIAssistantStore(
@@ -72,6 +77,17 @@ export default function VirtualizedMessages({
 	// the user was scrolled — sending a message and not seeing it is worse
 	// than the anti-yank guarantee.
 	const lastSeenUserMessageIdRef = useRef<string | null>(null);
+	const threadRef = useRef<HTMLDivElement>(null);
+	// The fading copy is for show: no focus, no clicks, nothing announced.
+	const makeInert = useCallback((element: HTMLDivElement | null): void => {
+		element?.setAttribute('inert', '');
+	}, []);
+	const [hasEmptyStateExited, setHasEmptyStateExited] = useState(false);
+	// How far into the exit a remount lands; fixed per mount so re-renders don't skip ahead.
+	const [exitOffsetMs] = useState(() =>
+		firstSendAt === null ? 0 : Date.now() - firstSendAt,
+	);
+	useFirstMessageFloat(threadRef, messages[0]?.id, firstSendAt);
 
 	const handleRegenerate = useCallback(
 		(messageId: string): void => {
@@ -160,52 +176,77 @@ export default function VirtualizedMessages({
 	}
 
 	const totalCount = messages.length + (showStreamingSlot ? 1 : 0);
+	const isEmptyStateExiting =
+		!hasEmptyStateExited &&
+		firstSendAt !== null &&
+		Date.now() - firstSendAt < EMPTY_STATE_EXIT_MS &&
+		!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	return (
-		<Virtuoso
-			ref={virtuosoRef}
-			scrollerRef={(ref): void => {
-				scrollerRef.current = ref;
-			}}
-			className={styles.messages}
-			totalCount={totalCount}
-			followOutput={followOutput}
-			atBottomStateChange={handleAtBottomStateChange}
-			atBottomThreshold={64}
-			initialTopMostItemIndex={Math.max(0, totalCount - 1)}
-			itemContent={(index): JSX.Element => {
-				if (index < messages.length) {
-					const msg = messages[index];
-					const isLastAssistant =
-						msg.role === 'assistant' &&
-						messages.slice(index + 1).every((m) => m.role !== 'assistant');
+		<div ref={threadRef} className={styles.thread}>
+			<Virtuoso
+				ref={virtuosoRef}
+				scrollerRef={(ref): void => {
+					scrollerRef.current = ref;
+				}}
+				className={styles.messages}
+				totalCount={totalCount}
+				followOutput={followOutput}
+				atBottomStateChange={handleAtBottomStateChange}
+				atBottomThreshold={64}
+				initialTopMostItemIndex={Math.max(0, totalCount - 1)}
+				itemContent={(index): JSX.Element => {
+					if (index < messages.length) {
+						const msg = messages[index];
+						const isLastAssistant =
+							msg.role === 'assistant' &&
+							messages.slice(index + 1).every((m) => m.role !== 'assistant');
+						return (
+							<MessageBubble
+								message={msg}
+								onRegenerate={
+									isLastAssistant && !showStreamingSlot
+										? (): void => handleRegenerate(msg.id)
+										: undefined
+								}
+								onRetry={
+									msg.isError && isLastAssistant && !showStreamingSlot
+										? handleRetry
+										: undefined
+								}
+								isLastAssistant={isLastAssistant}
+							/>
+						);
+					}
 					return (
-						<MessageBubble
-							message={msg}
-							onRegenerate={
-								isLastAssistant && !showStreamingSlot
-									? (): void => handleRegenerate(msg.id)
-									: undefined
-							}
-							onRetry={
-								msg.isError && isLastAssistant && !showStreamingSlot
-									? handleRetry
-									: undefined
-							}
-							isLastAssistant={isLastAssistant}
+						<StreamingMessage
+							conversationId={conversationId}
+							events={streamingEvents}
+							status={streamingStatus}
+							pendingApproval={pendingApproval}
+							pendingClarification={pendingClarification}
 						/>
 					);
-				}
-				return (
-					<StreamingMessage
-						conversationId={conversationId}
-						events={streamingEvents}
-						status={streamingStatus}
-						pendingApproval={pendingApproval}
-						pendingClarification={pendingClarification}
-					/>
-				);
-			}}
-		/>
+				}}
+			/>
+			{isEmptyStateExiting && (
+				<div
+					ref={makeInert}
+					className={styles.emptyStateExit}
+					style={{
+						animationDuration: `${EMPTY_STATE_EXIT_MS}ms`,
+						animationDelay: `-${exitOffsetMs}ms`,
+					}}
+					onAnimationEnd={(event): void => {
+						if (event.target === event.currentTarget) {
+							setHasEmptyStateExited(true);
+						}
+					}}
+					aria-hidden
+				>
+					<EmptyState isLeaving onSendSuggestedPrompt={onSendSuggestedPrompt} />
+				</div>
+			)}
+		</div>
 	);
 }

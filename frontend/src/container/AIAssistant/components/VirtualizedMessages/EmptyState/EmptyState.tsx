@@ -15,15 +15,21 @@ import styles from './EmptyState.module.scss';
 
 interface EmptyStateProps {
 	onSendSuggestedPrompt: (text: string) => void;
+	/** Fading out after the first send; shows the cached prompts without fetching. */
+	isLeaving?: boolean;
 }
 
 /** A new chat: the dot grid, Noz's intro and the suggested prompts. */
 export default function EmptyState({
 	onSendSuggestedPrompt,
+	isLeaving = false,
 }: EmptyStateProps): JSX.Element {
 	const isCompact = useVariant() === 'panel';
 	const { chips: emptyStateChips, isLoading: areChipsLoading } =
-		useEmptyStateChips(true);
+		useEmptyStateChips(!isLeaving);
+	// Fading out before the prompts arrived: keep the placeholders that were showing.
+	const showsSkeletons =
+		areChipsLoading || (isLeaving && emptyStateChips.length === 0);
 
 	return (
 		<div className={cx(styles.empty, { [styles.compact]: isCompact })}>
@@ -43,7 +49,7 @@ export default function EmptyState({
 				</div>
 				<div className={styles.suggestions} aria-busy={areChipsLoading}>
 					{/* As many as the backend sends, each the width of a real prompt. */}
-					{areChipsLoading &&
+					{showsSkeletons &&
 						EMPTY_STATE_CHIPS_FALLBACK.map((chip) => (
 							<span
 								key={chip.id}

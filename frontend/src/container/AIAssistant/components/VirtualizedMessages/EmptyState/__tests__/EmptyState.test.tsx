@@ -32,4 +32,14 @@ describe('EmptyState', () => {
 
 		expect(onSend).toHaveBeenCalledWith('Find slow database queries');
 	});
+
+	it('keeps the placeholders while fading out before the prompts arrived', () => {
+		mockChips.mockReturnValue({ chips: [], isLoading: false });
+
+		render(<EmptyState onSendSuggestedPrompt={jest.fn()} isLeaving />);
+
+		expect(screen.getAllByTestId('empty-state-chip-skeleton')).toHaveLength(
+			EMPTY_STATE_CHIPS_FALLBACK.length,
+		);
+	});
 });
