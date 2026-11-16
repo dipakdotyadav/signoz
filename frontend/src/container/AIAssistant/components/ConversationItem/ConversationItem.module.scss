@@ -63,12 +63,11 @@
 }
 
 // Wrapper around the chromeless rename Input (variant="unstyled"); the accent
-// bottom border marks the edit state, and the --input-* tokens keep the field
-// the same size as the title row it replaces.
+// bottom border marks the edit state, and the --input-* tokens match the text
+// of the title row it replaces.
 .input {
 	width: 100%;
 	border-bottom: 1px solid var(--accent-primary);
-	--input-height: 20px;
 	--input-padding: 1px 0;
 	--input-font-size: 12px;
 }

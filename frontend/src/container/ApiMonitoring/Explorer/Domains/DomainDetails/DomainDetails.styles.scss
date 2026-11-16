@@ -87,15 +87,7 @@
 				margin-bottom: 8px;
 			}
 
-			.domain-details-metadata-label {
-				// Typography has no prop for casing.
-				text-transform: uppercase;
-			}
-
 			.domain-details-metadata-value {
-				// Typography's only monospace affordance is `code`, which also draws a chip.
-				font-family: var(--code-base-500-font-family);
-
 				width: 100%;
 				white-space: nowrap;
 				overflow: hidden;

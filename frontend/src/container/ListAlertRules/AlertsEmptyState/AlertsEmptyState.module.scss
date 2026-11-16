@@ -11,24 +11,6 @@
 	max-width: 836px;
 }
 
-.title {
-	color: var(--l1-foreground);
-	font-size: var(--label-large-400-font-size);
-	font-style: normal;
-	font-weight: var(--label-large-400-font-weight);
-	line-height: 28px;
-	letter-spacing: -0.09px;
-}
-
-.subtitle {
-	color: var(--l2-foreground);
-	font-size: var(--paragraph-base-400-font-size);
-	font-style: normal;
-	font-weight: var(--paragraph-base-400-font-weight);
-	line-height: 20px;
-	letter-spacing: -0.07px;
-}
-
 .emptyAlertInfoContainer {
 	display: flex;
 	padding: 71px 193.5px;
@@ -54,14 +36,6 @@
 
 .icons {
 	color: white;
-}
-
-.emptyAlertAction {
-	color: var(--l2-foreground);
-}
-
-.emptyInfo {
-	color: var(--l1-foreground);
 }
 
 .actionContainer {
@@ -126,26 +100,6 @@
 	display: flex;
 	gap: 2px;
 	flex-direction: column;
-}
-
-.alertCardTextHeader {
-	color: var(--l1-foreground);
-}
-
-.alertCardTextSubheader {
-	color: var(--l2-foreground);
-}
-
-.infoText {
-	color: var(--primary);
-	font-family: Inter;
-	font-size: 12px;
-	font-style: normal;
-	font-weight: 500;
-	line-height: 16px;
-	letter-spacing: -0.06px;
-	margin: 0 8px;
-	white-space: nowrap;
 }
 
 .infoLinkContainer {

@@ -12,13 +12,6 @@
 	min-width: 0;
 }
 
-.name {
-	--typography-text-display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-}
-
 // One bullet per value when a variable holds several.
 .values {
 	margin: 0;

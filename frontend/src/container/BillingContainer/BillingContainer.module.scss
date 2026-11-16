@@ -5,14 +5,6 @@
 
 	.pageHeader {
 		margin-bottom: var(--spacing-4);
-
-		.pageHeaderTitle {
-			color: var(--l1-foreground);
-		}
-
-		.pageHeaderSubtitle {
-			color: var(--l2-foreground);
-		}
 	}
 
 	.pageInfoTitle {
@@ -122,15 +114,6 @@
 		border: 1px solid var(--l1-border);
 		border-radius: 5px;
 		padding: 0 var(--padding-12);
-
-		.planBenefits {
-			.planBenefit {
-				display: flex;
-				align-items: center;
-				gap: var(--spacing-8);
-				margin: var(--spacing-8) 0;
-			}
-		}
 	}
 
 	.billingGraphSection {

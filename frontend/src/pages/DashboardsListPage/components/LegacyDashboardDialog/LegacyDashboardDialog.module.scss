@@ -19,10 +19,6 @@
 	gap: 6px;
 }
 
-.idLabel {
-	color: var(--l2-foreground);
-}
-
 .idRow {
 	display: flex;
 	align-items: center;
@@ -32,9 +28,4 @@
 	border: 1px solid var(--l2-border);
 	border-radius: 4px;
 	background: var(--l2-background);
-}
-
-.idValue {
-	color: var(--l1-foreground);
-	word-break: break-all;
 }

@@ -39,20 +39,6 @@
 	width: 14px;
 }
 
-.title {
-	color: var(--l1-foreground);
-	font-size: var(--paragraph-base-500-font-size);
-	font-style: normal;
-	font-weight: var(--paragraph-base-500-font-weight);
-	line-height: 20px;
-	letter-spacing: -0.07px;
-	display: -webkit-box;
-	-webkit-line-clamp: 3;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	overflow-wrap: anywhere;
-}
-
 .lockIcon {
 	display: inline-flex;
 	align-items: center;
@@ -125,19 +111,6 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-}
-
-.avatarText {
-	color: var(--l2-foreground);
-}
-
-.byLabel {
-	color: var(--l2-foreground);
-	font-family: Inter;
-	font-size: var(--paragraph-small-400-font-size);
-	font-weight: var(--paragraph-small-400-font-weight);
-	line-height: 18px;
-	letter-spacing: -0.07px;
 }
 
 .updatedBy {

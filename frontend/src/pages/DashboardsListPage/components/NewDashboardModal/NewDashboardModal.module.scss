@@ -26,15 +26,6 @@
 	gap: 6px;
 }
 
-.label {
-	font-size: var(--label-base-400-font-size);
-	color: var(--l2-foreground);
-}
-
-.required {
-	color: var(--danger-background);
-}
-
 // Title row: icon picker joined flush to the left of the name input.
 .titleRow {
 	display: flex;
@@ -54,11 +45,6 @@
 	flex: 1;
 	min-width: 0;
 	--input-border-radius: 0 2px 2px 0;
-}
-
-.hint {
-	font-size: var(--label-small-400-font-size);
-	color: var(--l3-foreground);
 }
 
 .loading {
@@ -97,10 +83,6 @@
 	border: 1px solid var(--callout-primary-border);
 }
 
-.templatesDesc {
-	max-width: 360px;
-}
-
 .browseLink {
 	display: inline-flex;
 	align-items: center;
@@ -126,10 +108,6 @@
 	border-top: 1px solid var(--l2-border);
 }
 
-.requestHeader {
-	color: var(--l1-foreground);
-}
-
 .requestRow {
 	display: flex;
 	gap: 8px;
@@ -137,10 +115,6 @@
 
 .requestInput {
 	flex: 1;
-}
-
-.importHeader {
-	color: var(--l2-foreground);
 }
 
 .editorWrap {
@@ -168,11 +142,6 @@
 	display: flex;
 	align-items: center;
 	gap: 8px;
-}
-
-.errorText {
-	color: var(--danger-background);
-	font-size: var(--label-base-400-font-size);
 }
 
 .importFooter {

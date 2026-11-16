@@ -373,10 +373,6 @@
 			align-items: center;
 			gap: 12px;
 
-			.graph-popover-row-label {
-				width: 100px;
-			}
-
 			.graph-popover-inner-row {
 				display: flex;
 				align-items: center;
@@ -396,15 +392,6 @@
 					text-overflow: ellipsis;
 				}
 			}
-		}
-
-		.graph-popover-header-text {
-			color: var(--l2-foreground);
-		}
-
-		.graph-popover-row-label {
-			color: var(--muted-foreground);
-			width: 10%;
 		}
 
 		.graph-popover-cell {

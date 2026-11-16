@@ -72,19 +72,10 @@
 	background-color: var(--l2-background);
 }
 
-.editTitle {
-	color: var(--l1-foreground);
-}
-
 .field {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
-}
-
-.fieldLabel {
-	font-size: 13px;
-	color: var(--l2-foreground);
 }
 
 .emphasis {
@@ -138,8 +129,4 @@
 	flex: none;
 	margin-top: 2px;
 	color: var(--callout-warning-icon);
-}
-
-.invalidUnitText {
-	color: inherit;
 }

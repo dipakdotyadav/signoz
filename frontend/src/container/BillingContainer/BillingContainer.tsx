@@ -641,7 +641,7 @@ export default function BillingContainer(): JSX.Element {
 						}}
 						gutter={[16, 16]}
 					>
-						<Col span={20} className={styles.planBenefits}>
+						<Col span={20}>
 							<Typography
 								variant="paragraph"
 								size="base"

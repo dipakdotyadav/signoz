@@ -5,14 +5,6 @@
 	min-width: 0;
 }
 
-.groupName {
-	color: var(--l1-foreground);
-	font-weight: var(--label-base-600-font-weight);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
 .groupCount {
 	color: var(--l3-foreground);
 	font-size: var(--label-small-400-font-size);

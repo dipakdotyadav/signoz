@@ -362,18 +362,6 @@
 	}
 }
 
-.onboarding-title,
-.onboarding-filters-title,
-.onboarding-filters-item-title {
-	// Typography has no prop for casing.
-	text-transform: uppercase;
-}
-
-.onboarding-filters-title {
-	margin-top: 12px;
-	margin-bottom: 24px;
-}
-
 .onboarding-filters-item-title {
 	margin: 0 0 8px;
 }
@@ -536,12 +524,6 @@
 
 	.question-title-container {
 		margin-bottom: 24px;
-	}
-
-	.question-help-text {
-		display: block;
-		margin-top: 8px;
-		color: var(--l2-foreground);
 	}
 
 	.question-help-link {
@@ -840,29 +822,12 @@
 				border-radius: 6px;
 				background: color-mix(in srgb, var(--primary-background) 10%, transparent);
 
-				.ingestion-key-details-section-text {
-					&.ant-typography {
-						color: var(--bg-robin-400);
-						font-family: Inter;
-						font-size: 13px;
-						font-weight: 400;
-						line-height: 24px; /* 171.429% */
-					}
-				}
-
 				.ingestion-key-details-section-key {
 					width: 100%;
 					display: flex;
 					align-items: center;
 					justify-content: space-between;
 					gap: 8px;
-
-					.ingestion-key-label,
-					.ingestion-region-label {
-						display: flex;
-						align-items: center;
-						gap: 8px;
-					}
 
 					.ingestion-key-value-copy {
 						display: flex;

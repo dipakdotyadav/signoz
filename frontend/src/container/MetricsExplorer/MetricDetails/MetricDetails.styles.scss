@@ -205,9 +205,6 @@
 							color: var(--bg-forest-500);
 							animation: fade-in-out 1.5s ease-in-out;
 						}
-						.all-attributes-contribution {
-							color: var(--l2-foreground);
-						}
 					}
 				}
 
@@ -467,11 +464,6 @@
 			background: color-mix(in srgb, var(--l1-foreground) 4%, transparent);
 		}
 
-		.all-values-item-text {
-			flex: 1;
-			min-width: 0;
-		}
-
 		.all-values-item-actions {
 			display: flex;
 			gap: 2px;
@@ -481,10 +473,6 @@
 				color: var(--bg-forest-500);
 			}
 		}
-	}
-
-	.all-values-empty {
-		padding: 8px;
 	}
 }
 

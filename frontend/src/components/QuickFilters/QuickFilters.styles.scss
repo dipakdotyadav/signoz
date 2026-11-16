@@ -74,8 +74,6 @@
 			// Query selector themed as the primary sync chip; the Combobox has no
 			// primary color variant.
 			.select-box {
-				--combobox-trigger-width: auto;
-
 				min-width: 60px;
 				text-transform: uppercase;
 				--combobox-trigger-background: var(--primary-background);

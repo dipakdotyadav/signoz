@@ -15,22 +15,6 @@
 	object-fit: contain;
 }
 
-.dashboardTitle {
-	flex: 0 1 auto;
-	min-width: 0;
-	color: var(--l1-foreground);
-	font-size: 18px;
-	font-weight: 500;
-
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.dashboardTitleHover {
-	cursor: text !important;
-}
-
 .descriptionIcon {
 	flex-shrink: 0;
 	color: var(--l2-foreground);

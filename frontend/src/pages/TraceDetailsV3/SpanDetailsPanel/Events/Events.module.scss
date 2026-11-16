@@ -71,16 +71,6 @@
 	gap: var(--spacing-4);
 }
 
-.attributeKey {
-	color: var(--l2-foreground);
-	font-family: Inter;
-	font-size: 14px;
-	font-style: normal;
-	font-weight: var(--paragraph-base-400-font-weight);
-	line-height: var(--paragraph-base-400-line-height);
-	letter-spacing: -0.07px;
-}
-
 .timestampContainer {
 	display: flex;
 	gap: var(--spacing-2);
@@ -103,10 +93,6 @@
 		line-height: var(--paragraph-base-400-line-height);
 		letter-spacing: -0.07px;
 	}
-}
-
-.timestampText {
-	color: var(--l2-foreground);
 }
 
 .wrapper {

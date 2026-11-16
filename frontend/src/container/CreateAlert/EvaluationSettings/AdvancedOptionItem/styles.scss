@@ -10,17 +10,6 @@
 		flex-direction: column;
 		gap: 6px;
 
-		.advanced-option-item-title {
-			color: var(--l2-foreground);
-			display: flex;
-			align-items: center;
-			gap: 8px;
-		}
-
-		.advanced-option-item-description {
-			color: var(--muted-foreground);
-		}
-
 		.advanced-option-item-input {
 			margin-top: 16px;
 

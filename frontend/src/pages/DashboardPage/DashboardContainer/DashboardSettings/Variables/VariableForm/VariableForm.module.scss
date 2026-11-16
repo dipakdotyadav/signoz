@@ -28,21 +28,8 @@
 	width: 200px;
 }
 
-.label {
-	color: var(--l2-foreground);
-	font-family: Inter;
-	font-size: 14px;
-	font-weight: 400;
-	line-height: 20px;
-}
-
 .defaultInput {
 	width: 342px;
-}
-
-.errorText {
-	font-size: 12px;
-	color: var(--bg-amber-500);
 }
 
 /* Variable type — Tabs root composing the picker row + per-type body panels. */
@@ -221,10 +208,6 @@
 	overflow-y: auto;
 }
 
-.previewError {
-	color: var(--bg-amber-500);
-}
-
 /* Sort / multi / all / default rows */
 .sortSection,
 .multiSection,
@@ -238,31 +221,12 @@
 	align-items: center;
 }
 
-.rowLabel {
-	width: 339px;
-	color: var(--l2-foreground);
-	font-family: Inter;
-	font-size: 14px;
-	line-height: 20px;
-	letter-spacing: -0.07px;
-}
-
 .defaultValueSection {
 	display: flex;
 	justify-content: space-between;
 	gap: 1rem;
 	align-items: center;
 	margin-bottom: 0;
-}
-
-.defaultValueSection .label {
-	display: block;
-	margin-bottom: 2px;
-}
-
-.defaultValueDesc {
-	display: block;
-	color: var(--l2-foreground);
 }
 
 /* All variable selects (Source / Attribute / Sort / Default Value) share width
@@ -306,10 +270,6 @@
 .dynamicSourceSelect {
 	width: 100%;
 	min-width: 0;
-}
-
-.fromText {
-	white-space: nowrap;
 }
 
 .actionButtons {

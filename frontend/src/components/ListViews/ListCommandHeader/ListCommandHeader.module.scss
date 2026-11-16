@@ -24,15 +24,3 @@
 	background: var(--warning-background);
 	flex: none;
 }
-
-.title {
-	color: var(--l1-foreground);
-	font-size: var(--label-large-500-font-size);
-	font-style: normal;
-	font-weight: var(--label-large-500-font-weight);
-	line-height: 28px;
-	letter-spacing: -0.09px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}

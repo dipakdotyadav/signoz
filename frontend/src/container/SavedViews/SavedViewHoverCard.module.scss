@@ -12,15 +12,6 @@
 	gap: var(--spacing-4);
 }
 
-.name {
-	min-width: 0;
-	color: var(--l1-foreground);
-	font-size: var(--label-base-400-font-size);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .query {
 	display: flex;
 	flex-direction: column;
@@ -36,18 +27,6 @@
 	gap: var(--spacing-1);
 }
 
-.queryName {
-	color: var(--l2-foreground);
-	font-size: var(--label-small-400-font-size);
-}
-
-.metric {
-	color: var(--l2-foreground);
-	font-family: var(--code-small-400-font-family);
-	font-size: var(--code-small-400-font-size);
-	word-break: break-all;
-}
-
 .expression {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
@@ -60,37 +39,15 @@
 	word-break: break-all;
 }
 
-.error {
-	color: var(--l2-foreground);
-	font-size: var(--label-base-400-font-size);
-}
-
-.noFilters {
-	color: var(--l3-foreground);
-}
-
 .updated {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing-4);
 }
 
-.sectionTitle {
-	color: var(--muted-foreground);
-	font-size: var(--uppercase-small-500-font-size);
-	font-weight: var(--uppercase-small-500-font-weight);
-	line-height: var(--uppercase-small-500-line-height);
-	letter-spacing: 0.88px;
-	text-transform: uppercase;
-}
-
 .meta {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing-4);
-	color: var(--l2-foreground);
-}
-
-.metaText {
 	color: var(--l2-foreground);
 }

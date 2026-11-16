@@ -12,17 +12,6 @@
 	margin-top: 4px;
 }
 
-.noDashboard {
-	composes: bodyText from '../states.module.scss';
-	color: var(--l1-foreground);
-}
-
-.info {
-	composes: bodyText from '../states.module.scss';
-	color: var(--l2-foreground);
-	font-weight: var(--label-base-400-font-weight);
-}
-
 .actions {
 	display: flex;
 	gap: 24px;
