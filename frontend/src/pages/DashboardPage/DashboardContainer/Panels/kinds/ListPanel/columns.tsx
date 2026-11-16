@@ -41,7 +41,7 @@ function renderCell(value: unknown): ReactNode {
 			weight="regular"
 			color="inherit"
 			as="span"
-			textOverflow="wrap"
+			textOverflow="visible"
 		>
 			{coerceToString(value)}
 		</Typography>
@@ -56,7 +56,7 @@ function renderBodyCell(value: unknown): ReactNode {
 			weight="regular"
 			color="inherit"
 			as="span"
-			textOverflow="wrap"
+			textOverflow="visible"
 		>
 			{getBodyDisplay(value)}
 		</Typography>
