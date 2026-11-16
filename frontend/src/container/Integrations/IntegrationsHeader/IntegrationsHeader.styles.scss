@@ -8,19 +8,15 @@
 		margin-top: 4px;
 	}
 
-	.title {
-		margin: 0;
-	}
-
 	.integrations-search-request-container {
 		display: flex;
 		align-items: center;
 		gap: 8px;
 		margin-top: 16px;
+	}
 
-		> [data-slot='input'] {
-			flex: 1;
-		}
+	.integrations-search-input {
+		flex: 1;
 	}
 }
 

@@ -101,13 +101,15 @@ function IntegrationsHeader(props: IntegrationsHeaderProps): JSX.Element {
 			</Flex>
 
 			<div className="integrations-search-request-container">
-				<Input
-					placeholder="Search for an integration..."
-					value={searchQuery}
-					onChange={(e: ChangeEvent<HTMLInputElement>): void =>
-						onSearchChange(e.target.value)
-					}
-				/>
+				<div className="integrations-search-input">
+					<Input
+						placeholder="Search for an integration..."
+						value={searchQuery}
+						onChange={(e: ChangeEvent<HTMLInputElement>): void =>
+							onSearchChange(e.target.value)
+						}
+					/>
+				</div>
 				<Button
 					size="md"
 					variant="solid"
