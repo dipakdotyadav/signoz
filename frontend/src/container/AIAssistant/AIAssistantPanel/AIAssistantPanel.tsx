@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { Button } from '@signozhq/ui/button';
 import { TextEllipsis } from '@signozhq/ui/text-ellipsis';
 import { matchRoute } from 'lib/router/matchRoute';
@@ -6,7 +6,7 @@ import { navigate } from 'lib/router/navigation';
 import { useAppLocation } from 'lib/router/useAppLocation';
 import { Tooltip } from '@signozhq/ui/tooltip';
 import ROUTES from 'constants/routes';
-import { History, Maximize2, Plus, X } from '@signozhq/icons';
+import { Maximize2, Plus, X } from '@signozhq/icons';
 import Noz from 'components/Noz/Noz';
 import { BOTTOM_STRIP_HEIGHT } from 'container/BottomStrip';
 import { supportChatObstacle } from 'container/BottomStrip/SupportButton/supportChatObstacle';
@@ -14,7 +14,6 @@ import { FloatingPanel } from 'periscope/components/FloatingPanel';
 
 import logEvent from 'api/common/logEvent';
 
-import ConversationsList from '../components/ConversationsList';
 import ConversationView from '../ConversationView';
 import { AIAssistantEvents } from '../events';
 import { useAIAssistantAnalyticsContext } from '../hooks/useAIAssistantAnalyticsContext';
@@ -43,7 +42,6 @@ const PANEL_AVOID = [supportChatObstacle];
 
 export default function AIAssistantPanel(): JSX.Element | null {
 	const { pathname, search } = useAppLocation();
-	const [showHistory, setShowHistory] = useState(false);
 
 	const isOpen = useAIAssistantStore((s) => s.isDrawerOpen);
 	const isFullScreenPage = !!matchRoute(pathname, ROUTES.AI_ASSISTANT, {
@@ -84,13 +82,7 @@ export default function AIAssistantPanel(): JSX.Element | null {
 			source: 'header',
 		});
 		startNewConversation();
-		setShowHistory(false);
 	}, [startNewConversation, analyticsCtx]);
-
-	// When user picks a conversation from the list, close the sidebar
-	const handleHistorySelect = useCallback(() => {
-		setShowHistory(false);
-	}, []);
 
 	if (!isOpen || isFullScreenPage) {
 		return null;
@@ -126,19 +118,6 @@ export default function AIAssistantPanel(): JSX.Element | null {
 					</div>
 
 					<div className={styles.actions}>
-						<Tooltip title={showHistory ? 'Back to chat' : 'Conversations'}>
-							<Button
-								variant="ghost"
-								size="sm"
-								icon
-								color="secondary"
-								onClick={(): void => setShowHistory((v) => !v)}
-								aria-label="Toggle conversations"
-							>
-								<History size={14} />
-							</Button>
-						</Tooltip>
-
 						<Tooltip title="New conversation">
 							<Button
 								variant="ghost"
@@ -183,12 +162,8 @@ export default function AIAssistantPanel(): JSX.Element | null {
 					</div>
 				</div>
 
-				{showHistory ? (
-					<ConversationsList onSelect={handleHistorySelect} />
-				) : (
-					activeConversationId && (
-						<ConversationView conversationId={activeConversationId} />
-					)
+				{activeConversationId && (
+					<ConversationView conversationId={activeConversationId} />
 				)}
 			</FloatingPanel>
 		</VariantContext.Provider>
