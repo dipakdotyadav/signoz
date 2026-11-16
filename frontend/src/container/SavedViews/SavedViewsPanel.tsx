@@ -61,6 +61,7 @@ function SavedViewsPanel({
 				<>
 					<div className={styles.search}>
 						<Input
+							size="lg"
 							value={search}
 							onChange={(event): void => setSearch(event.target.value)}
 							placeholder="Search..."

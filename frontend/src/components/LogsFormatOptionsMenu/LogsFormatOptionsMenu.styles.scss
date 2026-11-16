@@ -155,14 +155,12 @@
 				}
 
 				// Stepper group: the Input sits seamlessly between the -/+
-				// periscope-btns (26px tall, l1-border).
+				// periscope-btns (24px tall, l1-border).
 				.max-lines-per-row-input {
 					display: flex;
 
-					--input-height: 26px;
 					--input-border-radius: 0;
 					--input-border: var(--l1-border);
-					--input-border-width: 1px 0;
 
 					[data-testid='max-lines-per-row'] {
 						min-width: 36px;
@@ -177,7 +175,7 @@
 					.periscope-btn {
 						box-shadow: none;
 						padding: 6px 12px;
-						height: 26px;
+						height: 24px;
 
 						border-radius: 0px 1px 1px 0px;
 						background: var(--l3-background);

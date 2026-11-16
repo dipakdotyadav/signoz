@@ -115,22 +115,22 @@ function TagKeyValueInput({
 			<div className={styles.field}>
 				{tags.map((tag, index) =>
 					index === editIndex ? (
-						<span key={tag} className={styles.editInput}>
-							<Input
-								width={160}
-								value={editValue}
-								autoFocus
-								testId={`${testId}-edit`}
-								onChange={(e: ChangeEvent<HTMLInputElement>): void => {
-									setEditValue(e.target.value);
-									if (error) {
-										setError('');
-									}
-								}}
-								onKeyDown={handleEditKeyDown}
-								onBlur={(): void => commitEdit(true)}
-							/>
-						</span>
+						<Input
+							key={tag}
+							size="sm"
+							width={160}
+							value={editValue}
+							autoFocus
+							testId={`${testId}-edit`}
+							onChange={(e: ChangeEvent<HTMLInputElement>): void => {
+								setEditValue(e.target.value);
+								if (error) {
+									setError('');
+								}
+							}}
+							onKeyDown={handleEditKeyDown}
+							onBlur={(): void => commitEdit(true)}
+						/>
 					) : (
 						<Pill.Closeable
 							key={tag}

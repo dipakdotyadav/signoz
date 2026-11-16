@@ -143,7 +143,7 @@ function FieldsSelectorContent({
 				<section className={styles.searchInput}>
 					<Input
 						type="text"
-						size="md"
+						size="lg"
 						value={inputValue}
 						placeholder="Search for a field..."
 						onChange={handleInputChange}

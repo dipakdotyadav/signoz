@@ -192,6 +192,7 @@ function OptionsMenu({
 										<Minus size={12} />
 									</button>
 									<Input.Number
+										size="sm"
 										min={MIN_LINES_PER_ROW}
 										max={MAX_LINES_PER_ROW}
 										format={{ maximumFractionDigits: 0 }}

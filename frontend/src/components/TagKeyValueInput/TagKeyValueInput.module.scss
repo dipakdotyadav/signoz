@@ -20,11 +20,6 @@
 	min-width: 120px;
 }
 
-// Wrapper around the inline chip-edit Input; width lives on the Input prop.
-.editInput {
-	--input-height: 24px;
-}
-
 .error {
 	color: var(--bg-cherry-500);
 	font-size: 12px;
