@@ -81,10 +81,19 @@ export function MissingEntryRow({
 				{entry.associatedComponent.name}
 			</Typography>
 			{entry.documentationLink && (
-				<Callout.Link href={entry.documentationLink} target="_blank">
-					Learn here
-					<ExternalLink size={12} />
-				</Callout.Link>
+				<Typography
+					variant="paragraph"
+					size="base"
+					weight="regular"
+					color="inherit"
+					as="span"
+					textOverflow="wrap"
+				>
+					<Callout.Link href={entry.documentationLink} target="_blank">
+						Learn here
+						<ExternalLink size={12} className={styles.linkIcon} />
+					</Callout.Link>
+				</Typography>
 			)}
 			<Divider />
 		</div>
