@@ -254,9 +254,11 @@ function FieldInput({ field, value, onChange }: FieldInputProps): JSX.Element {
 		};
 
 		const selectItems: SelectItemType[] = [
-			...(options ?? []).map(
-				(opt): SelectItemType => ({ type: 'item', value: opt, label: opt }),
-			),
+			...(options ?? []).map((opt): SelectItemType => ({
+				type: 'item',
+				value: opt,
+				label: opt,
+			})),
 			...(allowCustom
 				? [
 						{
