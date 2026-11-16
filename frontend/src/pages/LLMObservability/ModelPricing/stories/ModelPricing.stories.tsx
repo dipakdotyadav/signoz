@@ -64,7 +64,7 @@ export const UnpricedModels: Story = {
 	play: openUnpricedModels,
 };
 
-/** Creating a rule: the provider select starts empty and enabled. */
+/** Creating a rule: the provider select starts on OpenAI and enabled. */
 export const ModelCostDrawerCreate: Story = {
 	play: openModelCostDrawerCreate,
 };

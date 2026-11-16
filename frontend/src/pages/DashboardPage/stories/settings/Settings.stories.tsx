@@ -7,7 +7,11 @@ import { screen, userEvent, within } from 'storybook/test';
 import { storyMocks } from '@/storybook/controls/defineStoryMocks';
 import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
-import { dashboardMocks, openSettings } from '../DashboardPage.stories.mocks';
+import {
+	dashboardMocks,
+	expectToast,
+	openSettings,
+} from '../DashboardPage.stories.mocks';
 
 import DashboardPage from '../../DashboardPage';
 
@@ -130,7 +134,7 @@ export const OverviewSavedToast: Story = {
 		);
 		await userEvent.click(await screen.findByTestId('save-dashboard-config'));
 		if (args.dashboardPatch === 'success') {
-			await screen.findByText('Dashboard updated');
+			await expectToast('Dashboard updated');
 		}
 	},
 };
@@ -144,7 +148,7 @@ export const PublishedToast: Story = {
 		await openSettings(canvasElement, 'Publish');
 		await userEvent.click(await screen.findByTestId('public-dashboard-publish'));
 		if (args.publicWrite === 'success') {
-			await screen.findByText('Dashboard published successfully');
+			await expectToast('Dashboard published successfully');
 		}
 	},
 };
@@ -155,7 +159,7 @@ export const PublicUpdatedToast: Story = {
 		await openSettings(canvasElement, 'Publish');
 		await userEvent.click(await screen.findByTestId('public-dashboard-update'));
 		if (args.publicWrite === 'success') {
-			await screen.findByText('Public dashboard updated successfully');
+			await expectToast('Public dashboard updated successfully');
 		}
 	},
 };
@@ -168,7 +172,7 @@ export const UnpublishedToast: Story = {
 			await screen.findByTestId('public-dashboard-unpublish'),
 		);
 		if (args.publicWrite === 'success') {
-			await screen.findByText('Dashboard unpublished successfully');
+			await expectToast('Dashboard unpublished successfully');
 		}
 	},
 };
@@ -180,6 +184,6 @@ export const PublicUrlCopiedToast: Story = {
 		await userEvent.click(
 			await screen.findByRole('button', { name: 'Copy link' }),
 		);
-		await screen.findByText('Copied public dashboard URL successfully');
+		await expectToast('Copied public dashboard URL successfully');
 	},
 };

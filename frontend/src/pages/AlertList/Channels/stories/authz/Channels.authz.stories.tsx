@@ -151,7 +151,7 @@ export const CheckLoading: Story = {
 			setTimeout(resolve, 1500);
 		});
 		await expect(
-			canvasElement.querySelector('.ant-skeleton'),
+			canvasElement.querySelector('[data-slot="skeleton"]'),
 		).toBeInTheDocument();
 	},
 };

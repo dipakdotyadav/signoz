@@ -71,7 +71,7 @@ export const GroupActionsMenu: Story = {
 	},
 };
 
-/** The drawer that adds a mapping to the first group. */
+/** The drawer that adds a mapping to the first group, opened from its expanded row. */
 export const AddMappingDrawer: Story = {
 	parameters: { msw: { handlers: [groupMappers] } },
 	play: openAddMappingDrawer,
