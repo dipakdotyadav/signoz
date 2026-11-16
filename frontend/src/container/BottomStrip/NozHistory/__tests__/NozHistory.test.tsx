@@ -101,7 +101,7 @@ describe('NozHistory', () => {
 			expect(screen.queryByTestId(SLOT)).not.toBeInTheDocument();
 		});
 
-		it('stays usable while the panel is open', async () => {
+		it('closes the panel behind it when opened, leaving only the list', async () => {
 			const user = userEvent.setup({ pointerEventsCheck: 0 });
 			seed([THREADS.checkout], { isDrawerOpen: true });
 
@@ -112,6 +112,7 @@ describe('NozHistory', () => {
 			expect(rows.map((row) => row.textContent)).toStrictEqual([
 				'Checkout p99 regression4m',
 			]);
+			expect(useAIAssistantStore.getState().isDrawerOpen).toBe(false);
 		});
 	});
 

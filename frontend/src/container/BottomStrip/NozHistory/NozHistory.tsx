@@ -10,6 +10,7 @@ import {
 } from 'container/AIAssistant/events';
 import { normalizePage } from 'container/AIAssistant/hooks/useAIAssistantAnalyticsContext';
 import {
+	closeAIAssistant,
 	openAIAssistant,
 	useAIAssistantStore,
 } from 'container/AIAssistant/store/useAIAssistantStore';
@@ -70,6 +71,14 @@ function NozHistory(): JSX.Element | null {
 		[activeConversationId, isDrawerOpen, loadThread, pathname],
 	);
 
+	// One Noz surface at a time: the list replaces the panel behind it.
+	const handleOpenChange = useCallback((open: boolean): void => {
+		setIsOpen(open);
+		if (open) {
+			closeAIAssistant();
+		}
+	}, []);
+
 	// The full page lists its chats in its own sidebar.
 	const isAIAssistantPage = !!matchRoute(pathname, ROUTES.AI_ASSISTANT, {
 		exact: true,
@@ -81,7 +90,7 @@ function NozHistory(): JSX.Element | null {
 
 	return (
 		<div className={styles.nozHistory} data-testid="bottom-strip-noz-history">
-			<Popover open={isOpen} onOpenChange={setIsOpen}>
+			<Popover open={isOpen} onOpenChange={handleOpenChange}>
 				<Tooltip title="Recent conversations">
 					<PopoverTrigger asChild>
 						<Button
