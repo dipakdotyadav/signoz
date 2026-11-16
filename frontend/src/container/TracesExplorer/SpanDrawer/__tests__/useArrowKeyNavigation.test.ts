@@ -61,7 +61,7 @@ describe('useArrowKeyNavigation', () => {
 		menu.remove();
 	});
 
-	it('steps even when an ancestor stops the key from bubbling', () => {
+	it('ignores a key an ancestor consumed by stopping it from bubbling', () => {
 		const onNext = jest.fn() as jest.MockedFunction<() => void>;
 		renderHook(() =>
 			useArrowKeyNavigation({ enabled: true, onPrev: jest.fn(), onNext }),
@@ -78,7 +78,7 @@ describe('useArrowKeyNavigation', () => {
 			}),
 		);
 
-		expect(onNext).toHaveBeenCalledTimes(1);
+		expect(onNext).not.toHaveBeenCalled();
 		panel.remove();
 	});
 });
