@@ -38,11 +38,9 @@ export function useArrowKeyNavigation({
 			}
 		};
 
-		// Capture: the drawer panel stops arrow keys from bubbling, so a menu or
-		// listbox can't be told apart by `defaultPrevented` alone.
-		document.addEventListener('keydown', handleKeyDown, true);
+		document.addEventListener('keydown', handleKeyDown);
 		return (): void => {
-			document.removeEventListener('keydown', handleKeyDown, true);
+			document.removeEventListener('keydown', handleKeyDown);
 		};
 	}, [enabled, onPrev, onNext]);
 }
