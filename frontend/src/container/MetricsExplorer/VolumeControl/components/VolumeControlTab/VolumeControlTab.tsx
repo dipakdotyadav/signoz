@@ -160,7 +160,7 @@ function VolumeControlTab(): JSX.Element {
 							as="span"
 							textOverflow="wrap"
 						>
-							{getLabelVerb(rule.matchType)} {(rule.labels ?? []).join(', ') || '—'}
+							{`${getLabelVerb(rule.matchType)} ${(rule.labels ?? []).join(', ') || '—'}`}
 						</Typography>
 					),
 				},
@@ -295,6 +295,10 @@ function VolumeControlTab(): JSX.Element {
 							rule.ingestedSamples > 0
 								? (1 - rule.retainedSamples / rule.ingestedSamples) * 100
 								: 0;
+						const seriesLabel =
+							seriesReduction > 0 ? `−${Math.round(seriesReduction)}%` : '0%';
+						const samplesLabel =
+							samplesReduction > 0 ? `−${Math.round(samplesReduction)}%` : '0%';
 						if (seriesReduction <= 0 && samplesReduction <= 0) {
 							return (
 								<Typography
@@ -319,7 +323,7 @@ function VolumeControlTab(): JSX.Element {
 									as="span"
 									textOverflow="wrap"
 								>
-									{seriesReduction > 0 ? `−${Math.round(seriesReduction)}%` : '0%'}{' '}
+									<span className="translate-safe">{seriesLabel}</span>{' '}
 									<Typography
 										variant="paragraph"
 										size="small"
@@ -339,8 +343,7 @@ function VolumeControlTab(): JSX.Element {
 									as="span"
 									textOverflow="wrap"
 								>
-									{samplesReduction > 0 ? `−${Math.round(samplesReduction)}%` : '0%'}{' '}
-									samples
+									{`${samplesLabel} samples`}
 								</Typography>
 							</div>
 						);
@@ -355,19 +358,22 @@ function VolumeControlTab(): JSX.Element {
 					render: (
 						_value: unknown,
 						rule: MetricreductionruletypesGettableReductionRuleDTO,
-					): JSX.Element => (
-						<Typography
-							variant="paragraph"
-							size="small"
-							weight="regular"
-							color="secondary"
-							as="span"
-							textOverflow="wrap"
-						>
-							{dayjs(rule.updatedAt).format('MMM D, YYYY · h:mm A')}
-							{rule.updatedBy ? ` · ${rule.updatedBy}` : ''}
-						</Typography>
-					),
+					): JSX.Element => {
+						const updatedAt = dayjs(rule.updatedAt).format('MMM D, YYYY · h:mm A');
+						const updatedBy = rule.updatedBy ? ` · ${rule.updatedBy}` : '';
+						return (
+							<Typography
+								variant="paragraph"
+								size="small"
+								weight="regular"
+								color="secondary"
+								as="span"
+								textOverflow="wrap"
+							>
+								{`${updatedAt}${updatedBy}`}
+							</Typography>
+						);
+					},
 				},
 				...(canManageVolumeControl
 					? ([

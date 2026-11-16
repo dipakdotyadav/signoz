@@ -82,7 +82,7 @@ function AllAttributes({
 				ROUTES.METRICS_EXPLORER_EXPLORER,
 				true,
 			);
-			logEvent(MetricsExplorerEvents.OpenInExplorerClicked, {
+			void logEvent(MetricsExplorerEvents.OpenInExplorerClicked, {
 				[MetricsExplorerEventKeys.MetricName]: metricName,
 				[MetricsExplorerEventKeys.Tab]: 'summary',
 				[MetricsExplorerEventKeys.Modal]: 'metric-details',
@@ -111,7 +111,7 @@ function AllAttributes({
 				ROUTES.METRICS_EXPLORER_EXPLORER,
 				true,
 			);
-			logEvent(MetricsExplorerEvents.OpenInExplorerClicked, {
+			void logEvent(MetricsExplorerEvents.OpenInExplorerClicked, {
 				[MetricsExplorerEventKeys.MetricName]: metricName,
 				[MetricsExplorerEventKeys.Tab]: 'summary',
 				[MetricsExplorerEventKeys.Modal]: 'metric-details',
