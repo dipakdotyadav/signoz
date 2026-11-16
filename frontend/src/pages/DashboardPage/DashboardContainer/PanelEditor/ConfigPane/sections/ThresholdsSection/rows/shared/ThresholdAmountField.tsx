@@ -103,12 +103,17 @@ function ThresholdAmountField({
 				</div>
 			)}
 			{unit && !scopeUnit && unscopedHint && (
-				<Typography.Text
-					className={styles.help}
-					data-testid={`${testIdPrefix}-unit-unscoped-${index}`}
+				<Typography
+					variant="paragraph"
+					size="base"
+					weight="regular"
+					color="secondary"
+					as="span"
+					textOverflow="wrap"
+					testId={`${testIdPrefix}-unit-unscoped-${index}`}
 				>
 					{unscopedHint}
-				</Typography.Text>
+				</Typography>
 			)}
 		</div>
 	);
