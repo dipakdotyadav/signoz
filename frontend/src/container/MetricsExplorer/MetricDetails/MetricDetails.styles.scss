@@ -193,11 +193,8 @@
 						justify-content: space-between;
 						align-items: center;
 						.ant-btn {
-							.ant-typography:first-child {
-								font-family: var(--code-base-400-font-family);
-								color: var(--bg-robin-400);
-								background-color: transparent;
-							}
+							min-width: 0;
+							max-width: 100%;
 						}
 						.copy-feedback {
 							display: inline-flex;
@@ -243,12 +240,8 @@
 						.ant-btn {
 							text-align: left;
 							width: fit-content;
+							max-width: 100%;
 							background-color: var(--l1-border);
-							.ant-typography {
-								color: var(--l2-foreground);
-								font-family: var(--code-base-400-font-family);
-								text-overflow: ellipsis;
-							}
 							&:hover {
 								background-color: var(--l1-border);
 							}

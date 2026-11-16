@@ -220,12 +220,13 @@ function AllAttributes({
 							>
 								<Button type="text" data-testid={`attribute-key-${field.label}`}>
 									<Typography
-										variant="paragraph"
+										variant="code"
 										size="base"
 										weight="regular"
-										color="inherit"
+										color="primary"
 										as="span"
-										textOverflow="wrap"
+										display="block"
+										textOverflow="ellipsis"
 									>
 										{field.label}
 									</Typography>

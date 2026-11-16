@@ -5,6 +5,11 @@
 	padding: 16px 0;
 }
 
+// Break between labels, never inside one.
+.attributesCell {
+	--typography-overflow-wrap: normal;
+}
+
 .volumeCell {
 	display: flex;
 	flex-direction: column;

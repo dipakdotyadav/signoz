@@ -208,12 +208,13 @@ export function AllAttributesValue({
 						>
 							<Button type="text">
 								<Typography
-									variant="paragraph"
+									variant="code"
 									size="base"
 									weight="regular"
-									color="inherit"
+									color="secondary"
 									as="span"
-									textOverflow="wrap"
+									display="block"
+									textOverflow="ellipsis"
 								>
 									{attribute}
 								</Typography>

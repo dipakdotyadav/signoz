@@ -109,7 +109,7 @@ function VolumeControlTab(): JSX.Element {
 							weight="regular"
 							color="inherit"
 							as="span"
-							textOverflow="wrap"
+							textOverflow="visible"
 						>
 							{metricName}
 						</Typography>
@@ -138,7 +138,7 @@ function VolumeControlTab(): JSX.Element {
 							weight="regular"
 							color="inherit"
 							as="span"
-							textOverflow="wrap"
+							textOverflow="visible"
 						>
 							{getMatchTypeLabel(rule.matchType)}
 						</Typography>
@@ -147,6 +147,7 @@ function VolumeControlTab(): JSX.Element {
 				{
 					title: 'ATTRIBUTES',
 					key: 'attributes',
+					className: styles.attributesCell,
 					render: (
 						_value: unknown,
 						rule: MetricreductionruletypesGettableReductionRuleDTO,
