@@ -6,17 +6,14 @@ import { navigate } from 'lib/router/navigation';
 import { useAppLocation } from 'lib/router/useAppLocation';
 import { Tooltip } from '@signozhq/ui/tooltip';
 import ROUTES from 'constants/routes';
-import { Maximize2, Minus, Plus, X } from '@signozhq/icons';
+import { Maximize2, Minus, X } from '@signozhq/icons';
 import Noz from 'components/Noz/Noz';
 
 import logEvent from 'api/common/logEvent';
 
 import ConversationView from '../ConversationView';
 import { AIAssistantEvents, AIAssistantOpenSource } from '../events';
-import {
-	normalizePage,
-	useAIAssistantAnalyticsContext,
-} from '../hooks/useAIAssistantAnalyticsContext';
+import { normalizePage } from '../hooks/useAIAssistantAnalyticsContext';
 import { useActiveChatTitle } from '../hooks/useActiveChatTitle';
 import { useAIAssistantStore } from '../store/useAIAssistantStore';
 import { VariantContext } from '../VariantContext';
@@ -46,7 +43,6 @@ export default function AIAssistantModal(): JSX.Element | null {
 	const startNewConversation = useAIAssistantStore(
 		(s) => s.startNewConversation,
 	);
-	const analyticsCtx = useAIAssistantAnalyticsContext();
 
 	useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent): void => {
@@ -99,19 +95,6 @@ export default function AIAssistantModal(): JSX.Element | null {
 		);
 	}, [activeConversationId, closeModal, pathname, search]);
 
-	const handleNew = useCallback(() => {
-		void logEvent(AIAssistantEvents.NewChatClicked, {
-			...analyticsCtx,
-			// useAIAssistantAnalyticsContext() runs above this component's
-			// VariantContext.Provider, so the hook reports the default 'page'
-			// mode. Override here: the modal collapses to 'sidepane' in our
-			// taxonomy alongside the drawer.
-			mode: 'sidepane',
-			source: 'header',
-		});
-		startNewConversation();
-	}, [startNewConversation, analyticsCtx]);
-
 	const handleBackdropClick = useCallback(
 		(e: React.MouseEvent<HTMLDivElement>) => {
 			// Only close when clicking the backdrop itself, not the modal card
@@ -148,19 +131,6 @@ export default function AIAssistantModal(): JSX.Element | null {
 						</div>
 
 						<div className={styles.actions}>
-							<Tooltip title="New conversation">
-								<Button
-									variant="ghost"
-									size="sm"
-									icon
-									color="secondary"
-									onClick={handleNew}
-									aria-label="New conversation"
-								>
-									<Plus size={14} />
-								</Button>
-							</Tooltip>
-
 							<Tooltip title="Open full screen">
 								<Button
 									disabledTooltip="Start a conversation first"

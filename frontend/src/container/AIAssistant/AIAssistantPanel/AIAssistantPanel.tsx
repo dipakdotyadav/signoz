@@ -6,17 +6,13 @@ import { navigate } from 'lib/router/navigation';
 import { useAppLocation } from 'lib/router/useAppLocation';
 import { Tooltip } from '@signozhq/ui/tooltip';
 import ROUTES from 'constants/routes';
-import { Maximize2, Plus, X } from '@signozhq/icons';
+import { Maximize2, X } from '@signozhq/icons';
 import Noz from 'components/Noz/Noz';
 import { BOTTOM_STRIP_HEIGHT } from 'container/BottomStrip';
 import { supportChatObstacle } from 'container/BottomStrip/SupportButton/supportChatObstacle';
 import { FloatingPanel } from 'periscope/components/FloatingPanel';
 
-import logEvent from 'api/common/logEvent';
-
 import ConversationView from '../ConversationView';
-import { AIAssistantEvents } from '../events';
-import { useAIAssistantAnalyticsContext } from '../hooks/useAIAssistantAnalyticsContext';
 import { useActiveChatTitle } from '../hooks/useActiveChatTitle';
 import { useAIAssistantStore } from '../store/useAIAssistantStore';
 import { VariantContext } from '../VariantContext';
@@ -51,10 +47,6 @@ export default function AIAssistantPanel(): JSX.Element | null {
 		(s) => s.activeConversationId,
 	);
 	const closeDrawer = useAIAssistantStore((s) => s.closeDrawer);
-	const startNewConversation = useAIAssistantStore(
-		(s) => s.startNewConversation,
-	);
-	const analyticsCtx = useAIAssistantAnalyticsContext();
 	const chatTitle = useActiveChatTitle();
 
 	const handleExpand = useCallback(() => {
@@ -70,19 +62,6 @@ export default function AIAssistantPanel(): JSX.Element | null {
 			{ state: { fromInApp: true, returnTo: `${pathname}${search}` } },
 		);
 	}, [activeConversationId, closeDrawer, pathname, search]);
-
-	const handleNew = useCallback(() => {
-		void logEvent(AIAssistantEvents.NewChatClicked, {
-			...analyticsCtx,
-			// useAIAssistantAnalyticsContext() runs above this component's
-			// VariantContext.Provider, so the hook reports the default 'page'
-			// mode. Override here: this handler only runs when the drawer
-			// itself is mounted, which is unambiguously the sidepane surface.
-			mode: 'sidepane',
-			source: 'header',
-		});
-		startNewConversation();
-	}, [startNewConversation, analyticsCtx]);
 
 	if (!isOpen || isFullScreenPage) {
 		return null;
@@ -118,19 +97,6 @@ export default function AIAssistantPanel(): JSX.Element | null {
 					</div>
 
 					<div className={styles.actions}>
-						<Tooltip title="New conversation">
-							<Button
-								variant="ghost"
-								size="sm"
-								icon
-								color="secondary"
-								onClick={handleNew}
-								aria-label="New conversation"
-							>
-								<Plus size={14} />
-							</Button>
-						</Tooltip>
-
 						<Tooltip title="Open full screen">
 							<Button
 								disabledTooltip="Start a conversation first"
