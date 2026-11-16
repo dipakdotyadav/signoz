@@ -11,14 +11,16 @@ import type {
 	ServiceaccounttypesServiceAccountWithRolesDTO,
 	TypesOrganizationDTO,
 } from '../schemas';
-import { antdDriver } from '../antd';
 import { apiDriver, type Envelope } from '../api';
+import { comboboxAt } from '../combobox';
+import { inputField, inputFieldsStartingWith } from '../input';
 import {
 	createDashboard,
 	deleteViaApi,
 	type DashboardSeed,
 } from '../dashboards';
 import { driver, type Layer } from '../kit';
+import { toastByText } from '../toast';
 import { usersApi, type UsersApi } from '../users';
 
 /**
@@ -31,9 +33,6 @@ import { usersApi, type UsersApi } from '../users';
 
 export type Theme = 'dark' | 'light' | 'auto';
 export type Scope = 'all' | 'none';
-
-const toastText = (page: Page, text: string): Locator =>
-	page.locator('[data-sonner-toast]').filter({ hasText: text });
 
 /** `n` in base 26, spelled with `a-z` only. */
 const letters = (n: number): string =>
@@ -246,47 +245,18 @@ export interface Settings {
 
 export function settingsDriver(page: Page): Settings {
 	const api = apiDriver(page);
-	const antd = antdDriver(page);
 	const users = usersApi(page);
 
-	const clearSelect = async (select: Locator): Promise<void> => {
-		const removers = select.locator('.ant-select-selection-item-remove');
-		while ((await removers.count()) > 0) {
-			await removers.first().click();
-		}
+	const pickRole = async (trigger: Locator, name: string): Promise<void> => {
+		const roles = comboboxAt(page, trigger);
+		const before = await roles.chips().count();
+		await roles.pick(name);
+		await expect(roles.chips()).toHaveCount(before + 1);
 	};
-
-	/**
-	 * `antd.pickByName` closes the list with Escape, which also closes the
-	 * enclosing dialog or drawer. Close it by clicking the dialog's title.
-	 */
-	const pickInDialog = async (
-		dialog: Locator,
-		select: Locator,
-		name: string,
-	): Promise<void> => {
-		const before = await antd.selectedTags(select).count();
-		await select.click();
-		await expect(select).toHaveClass(/ant-select-open/);
-		await select.locator('input[role="combobox"]').fill(name);
-		const dropdown = await antd.ownDropdown(select);
-		await dropdown
-			.locator('.ant-select-item-option')
-			.filter({ hasText: name })
-			.first()
-			.click();
-		await dialog.getByRole('heading').first().click();
-		await expect(select).not.toHaveClass(/ant-select-open/);
-		await expect(antd.selectedTags(select)).toHaveCount(before + 1);
-	};
-
-	/** antd renders the select root around the input that carries the id. */
-	const selectById = (id: string): Locator =>
-		page.locator('.ant-select').filter({ has: page.locator(`input#${id}`) });
 
 	const settings: Settings = {
 		users,
-		toast: (text) => toastText(page, text),
+		toast: (text) => toastByText(page, text),
 		pathname: () => new URL(page.url()).pathname,
 		reload: async () => {
 			await page.reload();
@@ -418,7 +388,7 @@ export function settingsDriver(page: Page): Settings {
 			},
 			heading: () => page.getByRole('heading', { name: 'Members', exact: true }),
 			search: async (text) => {
-				await page.getByTestId('members-search-input').fill(text);
+				await inputField(page, 'members-search-input').fill(text);
 			},
 			// antd keys each row by the member id; the email is what callers hold.
 			row: (email) => page.locator('tr[data-row-key]').filter({ hasText: email }),
@@ -435,20 +405,12 @@ export function settingsDriver(page: Page): Settings {
 			invite: async (rows) => {
 				const dialog = settings.members.inviteDialog();
 				for (const [index, { email, role }] of rows.entries()) {
-					if (
-						index >= (await dialog.locator('[data-testid^="invite-email-"]').count())
-					) {
+					const emails = inputFieldsStartingWith(dialog, 'invite-email-');
+					if (index >= (await emails.count())) {
 						await dialog.getByTestId('invite-add-row').click();
 					}
-					await dialog
-						.locator('[data-testid^="invite-email-"]')
-						.nth(index)
-						.fill(email);
-					const select = dialog
-						.locator('.ant-select')
-						.filter({ has: page.locator('input[id^="invite-role-"]') })
-						.nth(index);
-					await pickInDialog(dialog, select, role);
+					await emails.nth(index).fill(email);
+					await pickRole(dialog.locator('[id^="invite-role-"]').nth(index), role);
 				}
 				await page.getByTestId('invite-submit-btn').click();
 				await expect(settings.toast('Invites sent successfully')).toBeVisible();
@@ -465,10 +427,9 @@ export function settingsDriver(page: Page): Settings {
 			roleSelect: () => selectById('member-role'),
 			deleteButton: () => page.getByTestId('member-delete-btn'),
 			setRoles: async (roles) => {
-				const select = settings.members.roleSelect();
-				await clearSelect(select);
+				await comboboxAt(page, settings.members.roleSelect()).clear();
 				for (const role of roles) {
-					await pickInDialog(settings.members.drawer(), select, role);
+					await pickRole(settings.members.roleSelect(), role);
 				}
 			},
 			addRole: async (role) => {
@@ -515,7 +476,7 @@ export function settingsDriver(page: Page): Settings {
 			},
 			page: () => page.getByTestId('roles-settings'),
 			search: async (text) => {
-				await page.getByTestId('roles-search-input').fill(text);
+				await inputField(page, 'roles-search-input').fill(text);
 			},
 			row: (name) => page.getByTestId(`role-row-${name}`),
 			section: (label) =>
@@ -525,10 +486,10 @@ export function settingsDriver(page: Page): Settings {
 				await expect(settings.roles.editor()).toBeVisible();
 			},
 			fillName: async (name) => {
-				await page.getByTestId('role-name-input').fill(name);
+				await inputField(page, 'role-name-input').fill(name);
 			},
 			fillDescription: async (text) => {
-				await page.getByTestId('role-description-input').fill(text);
+				await inputField(page, 'role-description-input').fill(text);
 			},
 			grant: async (resource, verb, scope) => {
 				// The view page shares the header testid and can still be mounted.
@@ -595,13 +556,13 @@ export function settingsDriver(page: Page): Settings {
 				page.getByRole('heading', { name: 'Service Accounts', exact: true }),
 			newButton: () => page.getByTestId('new-sa-btn'),
 			search: async (text) => {
-				await page.getByTestId('sa-search-input').fill(text);
+				await inputField(page, 'sa-search-input').fill(text);
 			},
 			row: (name) =>
 				page.getByRole('button', { name: `View service account ${name}` }),
 			create: async (name) => {
 				await settings.serviceAccounts.newButton().click();
-				await page.getByTestId('create-sa-name-input').fill(name);
+				await inputField(page, 'create-sa-name-input').fill(name);
 				const created = page.waitForResponse(
 					(response) =>
 						response.request().method() === 'POST' &&
@@ -632,7 +593,7 @@ export function settingsDriver(page: Page): Settings {
 				const { serviceAccountRoles } =
 					await settings.serviceAccounts.apiAccount(id);
 				await expect(
-					antd.selectedTags(settings.serviceAccounts.roleSelect()),
+					comboboxAt(page, settings.serviceAccounts.roleSelect()).chips(),
 				).toHaveCount((serviceAccountRoles ?? []).length);
 			},
 			openKeys: async (id) => {
@@ -643,7 +604,7 @@ export function settingsDriver(page: Page): Settings {
 			},
 			addKey: async (name) => {
 				await page.getByTestId('sa-add-key-btn').click();
-				await page.getByTestId('add-key-name-input').fill(name);
+				await inputField(page, 'add-key-name-input').fill(name);
 				await page.getByTestId('add-key-submit-btn').click();
 				const value = page.getByTestId('created-key-value');
 				await expect(value).not.toBeEmpty();
@@ -667,12 +628,11 @@ export function settingsDriver(page: Page): Settings {
 				await page.getByTestId('revoke-key-confirm-btn').click();
 				await expect(settings.toast('Key revoked successfully')).toBeVisible();
 			},
-			roleSelect: () => selectById('sa-roles'),
+			roleSelect: () => page.getByTestId('sa-roles-select'),
 			setRoles: async (roles) => {
-				const select = settings.serviceAccounts.roleSelect();
-				await clearSelect(select);
+				await comboboxAt(page, settings.serviceAccounts.roleSelect()).clear();
 				for (const role of roles) {
-					await pickInDialog(settings.serviceAccounts.drawer(), select, role);
+					await pickRole(settings.serviceAccounts.roleSelect(), role);
 				}
 			},
 			save: async () => {

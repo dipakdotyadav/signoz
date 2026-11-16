@@ -4,6 +4,7 @@
  */
 import { expect, type Locator, type Page } from '@playwright/test';
 
+import { inputField } from './input';
 import { driver } from './kit';
 import { test as panelsTest } from './panels';
 
@@ -168,7 +169,7 @@ function sectionHandle(page: Page, title: string): SectionHandle {
 		},
 		async rename(next) {
 			await section.startRename();
-			await page.getByTestId('section-title-input').fill(next);
+			await inputField(page, 'section-title-input').fill(next);
 			await page.getByTestId('section-title-submit').click();
 			await expect(modal()).toBeHidden();
 		},
@@ -222,7 +223,7 @@ function dashboardPageDriver(page: Page): DashboardPage {
 			},
 		},
 		rename: {
-			input: () => page.getByTestId('dashboard-title-input'),
+			input: () => inputField(page, 'dashboard-title-input'),
 			save: () => page.getByTestId('dashboard-title-save'),
 			cancel: () => page.getByTestId('dashboard-title-cancel'),
 			async to(name) {
@@ -274,7 +275,7 @@ function dashboardPageDriver(page: Page): DashboardPage {
 		sectionTitles: () =>
 			page.locator('[data-testid^="dashboard-section-toggle-"]'),
 		sectionModal: {
-			input: () => page.getByTestId('section-title-input'),
+			input: () => inputField(page, 'section-title-input'),
 			submit: () => page.getByTestId('section-title-submit'),
 			cancel: () => page.getByTestId('section-title-cancel'),
 		},
