@@ -18,7 +18,7 @@ function StripTypography({
 		<span className={styles.stripTypography}>
 			{prefix}
 			<Typography
-				variant="paragraph"
+				variant="code"
 				size="base"
 				weight="regular"
 				color="inherit"

@@ -30,7 +30,7 @@ function StripKeyValue({
 				</span>
 			)}
 			<Typography
-				variant="paragraph"
+				variant="code"
 				size="base"
 				weight="regular"
 				color="inherit"
@@ -40,7 +40,7 @@ function StripKeyValue({
 				{label}
 			</Typography>
 			<Typography
-				variant="paragraph"
+				variant="code"
 				size="base"
 				weight="regular"
 				color="inherit"
@@ -50,7 +50,7 @@ function StripKeyValue({
 				:
 			</Typography>
 			<Typography
-				variant="paragraph"
+				variant="code"
 				size="base"
 				weight="regular"
 				color="inherit"
