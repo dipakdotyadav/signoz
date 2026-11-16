@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Collapse } from 'antd';
 import { Typography } from '@signozhq/ui/typography';
-import { Undo2 } from '@signozhq/icons';
+import { ChevronDown, ChevronRight, Undo2 } from '@signozhq/icons';
 import useActiveQueryIndex from 'components/QuickFilters/hooks/useActiveQueryIndex';
 import {
 	IQuickFiltersConfig,
@@ -278,6 +278,9 @@ function Duration({
 				className="collapseContainer"
 				activeKey={activeKeys}
 				onChange={(keys): void => setActiveKeys(keys as string[])}
+				expandIcon={({ isActive }): JSX.Element =>
+					isActive ? <ChevronDown size={13} /> : <ChevronRight size={13} />
+				}
 				items={[
 					{
 						key: 'durationNano',
