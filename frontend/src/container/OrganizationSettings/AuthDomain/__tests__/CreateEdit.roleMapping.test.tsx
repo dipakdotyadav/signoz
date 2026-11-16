@@ -55,8 +55,8 @@ jest.mock('@signozhq/ui/button', () => ({
 // form.validateFields() + a react-query mutation, all driven through userEvent).
 // Under a CPU-saturated parallel `jest` run the wall-clock roughly triples, which
 // pushes the longest tests past the 5000ms default and makes them flaky. Give the
-// whole file a wider budget (matches LogsPanelComponent.test.tsx).
-jest.setTimeout(20000);
+// whole file a wider budget.
+jest.setTimeout(40000);
 
 const ROLES_ENDPOINT = '*/api/v1/roles';
 

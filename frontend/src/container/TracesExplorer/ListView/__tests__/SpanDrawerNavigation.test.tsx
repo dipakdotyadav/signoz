@@ -125,7 +125,7 @@ describe('Traces ListView - span drawer navigation', () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId('span-details-drawer')).not.toBeInTheDocument(),
 		);
-	}, 15000);
+	}, 30000);
 
 	it('opens the trace page in a new tab from the row icon without opening the drawer', async () => {
 		const open = jest.spyOn(window, 'open').mockImplementation(() => null);

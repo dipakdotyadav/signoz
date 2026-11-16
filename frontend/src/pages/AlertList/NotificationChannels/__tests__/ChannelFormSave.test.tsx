@@ -3,6 +3,7 @@ import {
 	setupAuthzAdmin,
 	setupAuthzGrantByPrefix,
 } from 'lib/authz/utils/authz-test-utils';
+import { ChannelKind } from 'container/CreateAlertChannels/types';
 import { server } from 'mocks-server/server';
 import { rest } from 'msw';
 import { render, screen, userEvent, waitFor } from 'tests/test-utils';
@@ -11,6 +12,16 @@ import ChannelForm from '../components/ChannelForm/ChannelForm';
 
 const FIND = { timeout: 5000 };
 const TEST_TIMEOUT = 20000;
+
+const pickChannelType = async (
+	user: ReturnType<typeof userEvent.setup>,
+	kind: ChannelKind,
+): Promise<void> => {
+	await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
+	await user.click(
+		await screen.findByTestId(`channel-type-select-item-${kind}`, {}, FIND),
+	);
+};
 
 describe('ChannelForm save', () => {
 	beforeEach(() => {
@@ -89,8 +100,7 @@ describe('ChannelForm save', () => {
 			render(<ChannelForm onDone={jest.fn()} />);
 
 			const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
-			await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
-			await user.click(await screen.findByRole('option', { name: /^Telegram$/ }));
+			await pickChannelType(user, ChannelKind.telegram);
 
 			await user.type(
 				screen.getByTestId('channel-name-textbox-field'),
@@ -141,8 +151,7 @@ describe('ChannelForm save', () => {
 			render(<ChannelForm onDone={jest.fn()} />);
 
 			const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
-			await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
-			await user.click(await screen.findByRole('option', { name: /^Webhook$/ }));
+			await pickChannelType(user, ChannelKind.webhook);
 
 			await user.type(
 				screen.getByTestId('channel-name-textbox-field'),
@@ -204,8 +213,7 @@ describe('ChannelForm save', () => {
 			render(<ChannelForm onDone={jest.fn()} />);
 
 			const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
-			await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
-			await user.click(await screen.findByRole('option', { name: /^Jira$/ }));
+			await pickChannelType(user, ChannelKind.jira);
 			expect(
 				screen.getByTestId('jira-deployment-radio-item-cloud'),
 			).toHaveAttribute('aria-checked', 'true');
@@ -656,8 +664,7 @@ describe('ChannelForm save', () => {
 			render(<ChannelForm onDone={jest.fn()} />);
 
 			const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
-			await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
-			await user.click(await screen.findByRole('option', { name: /^Telegram$/ }));
+			await pickChannelType(user, ChannelKind.telegram);
 
 			expect(screen.getByTestId('telegram-title-textarea')).toHaveValue('');
 
@@ -699,8 +706,7 @@ describe('ChannelForm save', () => {
 			render(<ChannelForm onDone={jest.fn()} />);
 
 			const user = userEvent.setup({ delay: null, pointerEventsCheck: 0 });
-			await user.click(await screen.findByTestId('channel-type-select', {}, FIND));
-			await user.click(await screen.findByRole('option', { name: /^Pagerduty$/ }));
+			await pickChannelType(user, ChannelKind.pagerduty);
 
 			expect(screen.getByTestId('pager-client-url-textarea-field')).toHaveValue(
 				'',
