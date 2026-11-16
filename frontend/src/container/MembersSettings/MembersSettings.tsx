@@ -247,6 +247,7 @@ function MembersSettings(): JSX.Element {
 								name="members-search"
 								testId="members-search-input"
 								disabled={controlsDisabled}
+								disabledTooltip={undefined}
 							/>
 						</AuthZTooltip>
 					</div>

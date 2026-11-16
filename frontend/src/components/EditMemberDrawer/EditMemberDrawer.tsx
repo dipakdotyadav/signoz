@@ -565,6 +565,7 @@ function EditMemberDrawer({
 						}}
 						placeholder="Enter name"
 						disabled={isRootUser || isDeleted}
+						disabledTooltip={undefined}
 					/>
 				</AuthZTooltip>
 			</div>
@@ -764,7 +765,7 @@ function EditMemberDrawer({
 			<Drawer
 				type="task"
 				stack="overlay"
-				open={open}
+				open={member !== null}
 				onClose={handleClose}
 				title="Member Details"
 				width="wide"
