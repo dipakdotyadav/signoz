@@ -41,6 +41,7 @@ export function CheckboxFilterV2Header({
 			display="inline-block"
 			minWidth={0}
 			textOverflow="ellipsis"
+			textTransform="capitalize"
 		>
 			{title}
 		</Typography>

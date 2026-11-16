@@ -136,6 +136,9 @@ function ImpactPanel({
 							weight="regular"
 							color="inherit"
 							as="span"
+							display="flex"
+							gap={3}
+							verticalAlign="baseline"
 							textOverflow="wrap"
 							tabularNumbers
 						>

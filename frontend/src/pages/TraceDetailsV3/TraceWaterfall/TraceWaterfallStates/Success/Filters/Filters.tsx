@@ -249,7 +249,7 @@ function Filters({
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				Highlight errors
 			</Typography>

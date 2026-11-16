@@ -114,7 +114,7 @@ function TableView({
 												weight="regular"
 												color="inherit"
 												as="span"
-												textOverflow="wrap"
+												textOverflow="visible"
 											>
 												{formattedValue}
 											</Typography>

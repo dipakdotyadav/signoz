@@ -23,7 +23,7 @@ function StripTypography({
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				{children}
 			</Typography>

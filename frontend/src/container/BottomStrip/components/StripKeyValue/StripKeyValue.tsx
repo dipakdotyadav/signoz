@@ -35,7 +35,7 @@ function StripKeyValue({
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				{label}
 			</Typography>
@@ -45,7 +45,7 @@ function StripKeyValue({
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				:
 			</Typography>
@@ -55,7 +55,7 @@ function StripKeyValue({
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				{value}
 			</Typography>

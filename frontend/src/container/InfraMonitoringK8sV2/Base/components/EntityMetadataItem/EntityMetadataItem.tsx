@@ -45,7 +45,7 @@ export function EntityMetadataItem({
 								weight="medium"
 								color="inherit"
 								as="span"
-								textOverflow="wrap"
+								textOverflow="visible"
 							>
 								{value}
 							</Typography>

@@ -59,7 +59,7 @@ function Suggestions(props: ISuggestionsProps): React.ReactElement {
 									variant="paragraph"
 									size="base"
 									weight="regular"
-									color="secondary"
+									color="inherit"
 									as="p"
 									textOverflow="ellipsis"
 								>
@@ -88,7 +88,8 @@ function Suggestions(props: ISuggestionsProps): React.ReactElement {
 									weight="regular"
 									color="inherit"
 									as="span"
-									textOverflow="wrap"
+									textOverflow="visible"
+									textTransform="capitalize"
 								>
 									{value.type}
 								</Typography>
@@ -105,7 +106,7 @@ function Suggestions(props: ISuggestionsProps): React.ReactElement {
 								<Typography
 									{...labelTextStyle}
 									size="base"
-									color="secondary"
+									color="inherit"
 									as="p"
 									textOverflow="ellipsis"
 								>
