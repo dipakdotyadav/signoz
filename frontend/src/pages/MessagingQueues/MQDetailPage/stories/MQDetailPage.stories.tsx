@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { MessagingQueuesViewTypeOptions } from 'pages/MessagingQueues/MessagingQueuesUtils';
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 
 import { storyMocks } from '@/storybook/controls/defineStoryMocks';
 import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
 import { kafkaDetailMocks } from './MQDetailPage.stories.mocks';
+import { openCustomInterval } from './__story_mockdata__/kafkaDetail.play';
 
 import MessagingQueuesMainPage from '../../MessagingQueuesMainPage';
 
@@ -101,16 +102,7 @@ export const DropRate: Story = {
 /** The custom-interval input inside the evaluation-time dropdown. */
 export const DropRateIntervalOpen: Story = {
 	args: { view: MessagingQueuesViewTypeOptions.DropRate },
-	play: async ({ canvasElement }): Promise<void> => {
-		await userEvent.click(
-			await within(canvasElement).findByText('10ms', undefined, untilLoaded),
-		);
-		await screen.findByPlaceholderText(
-			'Enter custom time (ms)',
-			undefined,
-			untilLoaded,
-		);
-	},
+	play: openCustomInterval,
 };
 
 /** The broker, producer, consumer and JVM metrics kafka itself reports. */
