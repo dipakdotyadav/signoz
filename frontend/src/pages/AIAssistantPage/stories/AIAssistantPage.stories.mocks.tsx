@@ -8,7 +8,7 @@ import removeSessionStorage from 'api/browser/sessionstorage/remove';
 import ROUTES from 'constants/routes';
 import { useAIAssistantStore } from 'container/AIAssistant/store/useAIAssistantStore';
 import { rest, type RequestHandler } from 'msw';
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import {
 	choiceControl,
@@ -20,6 +20,7 @@ import { defineStoryMocks } from '@/storybook/controls/defineStoryMocks';
 import { globalConfigResponse } from '@/storybook/msw/__story_mockdata__/appShell';
 import { dashboardsForUserResponse } from '@/storybook/msw/__story_mockdata__/dashboards';
 import type { MockResolver } from '@/storybook/msw/types';
+import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
 import {
 	AGENT_STATES,
@@ -85,6 +86,15 @@ const onBothBases = (
 ];
 
 const ok: MockResolver = (_req, res, ctx) => res(ctx.status(200), ctx.json({}));
+
+/** The sidebar always lists the open conversation, which the thread list answers first. */
+const listedConversations = ({
+	conversation,
+	history,
+}: {
+	conversation: boolean;
+	history: number;
+}): number => (conversation ? Math.max(1, history) : history);
 
 const startedExecution: MockResolver = (_req, res, ctx) =>
 	res(ctx.status(200), ctx.json({ executionId: EXECUTION_ID }));
@@ -153,10 +163,7 @@ export const aiAssistantMocks = defineStoryMocks({
 					: // A thread the sidebar does not list is one the server does not
 						// know, and the store drops those, so an open conversation is
 						// always the first row.
-						threadListResponse(
-							values.conversation ? Math.max(1, values.history) : values.history,
-							false,
-						),
+						threadListResponse(listedConversations(values), false),
 			),
 		),
 		...onBothBases(
@@ -326,4 +333,43 @@ export const failVoiceInput = (error: 'network' | 'not-allowed'): void => {
 	(
 		window as unknown as { webkitSpeechRecognition: StorySpeechRecognition }
 	).webkitSpeechRecognition.listening?.onerror?.({ error });
+};
+
+export type AIAssistantArgs = PageStoryArgs<typeof aiAssistantMocks>;
+
+/** The thread list answers through the Data control, and an empty one leaves no row to act on. */
+export const showsConversationRows = (args: AIAssistantArgs): boolean =>
+	args.dataState === 'loaded' && listedConversations(args) > 0;
+
+/** The form comes with the thread detail, which a new conversation never fetches. */
+export const hasPendingClarification = (args: AIAssistantArgs): boolean =>
+	args.conversation &&
+	args.dataState === 'loaded' &&
+	!!threadDetailResponse(args.contents, args.agent).pendingClarification;
+
+/** The thread list resolves before the thread does, which outlasts the 1s default. */
+export const untilLoaded = { timeout: 15_000 };
+
+/** How long what a click opened has to stay on screen to count as open. */
+const HOLD_MS = 1_000;
+
+/**
+ * Click something, and keep clicking until what it opens is on screen. The
+ * message list remounts its items while it measures a freshly loaded thread, so
+ * a single click can land on a row that is about to be replaced, taking the
+ * state it just set with it. The replacement can land after that state has
+ * rendered, so it has to still be there `HOLD_MS` later.
+ */
+export const clickUntil = async (
+	find: () => Promise<HTMLElement>,
+	opens: RegExp,
+): Promise<void> => {
+	await waitFor(async () => {
+		await userEvent.click(await find());
+		await screen.findByText(opens, undefined, { timeout: 1_000 });
+		await new Promise((resolve) => {
+			setTimeout(resolve, HOLD_MS);
+		});
+		screen.getByText(opens);
+	}, untilLoaded);
 };

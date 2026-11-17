@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import ROUTES from 'constants/routes';
 import { renderAtRoute } from '@/storybook/renderAtRoute';
-import { screen, userEvent, waitFor, within } from 'storybook/test';
+import { screen, userEvent, within } from 'storybook/test';
 
 import { storyMocks } from '@/storybook/controls/defineStoryMocks';
 import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
@@ -9,13 +9,19 @@ import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 import AIAssistantPage from '../AIAssistantPage';
 import {
 	aiAssistantMocks,
+	clickUntil,
 	failVoiceInput,
 	forgetVoiceFailure,
 	longActionTooltipHandlers,
 	speak,
 	startVoiceInput,
+	untilLoaded,
 } from './AIAssistantPage.stories.mocks';
 import type { ThreadPart } from './__story_mockdata__/aiAssistant';
+import {
+	openClarificationSelect,
+	renameConversation,
+} from './__story_mockdata__/aiAssistant.play';
 
 type AIAssistantArgs = PageStoryArgs<typeof aiAssistantMocks>;
 
@@ -46,33 +52,6 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<AIAssistantArgs>;
-
-/** The thread list resolves before the thread does, which outlasts the 1s default. */
-const untilLoaded = { timeout: 15_000 };
-
-/** How long what a click opened has to stay on screen to count as open. */
-const HOLD_MS = 1_000;
-
-/**
- * Click something, and keep clicking until what it opens is on screen. The
- * message list remounts its items while it measures a freshly loaded thread, so
- * a single click can land on a row that is about to be replaced, taking the
- * state it just set with it. The replacement can land after that state has
- * rendered, so it has to still be there `HOLD_MS` later.
- */
-const clickUntil = async (
-	find: () => Promise<HTMLElement>,
-	opens: RegExp,
-): Promise<void> => {
-	await waitFor(async () => {
-		await userEvent.click(await find());
-		await screen.findByText(opens, undefined, { timeout: 1_000 });
-		await new Promise((resolve) => {
-			setTimeout(resolve, HOLD_MS);
-		});
-		screen.getByText(opens);
-	}, untilLoaded);
-};
 
 /** The blocks the agent renders as cards the user answers in place. */
 const INTERACTIVE: ThreadPart[] = [
@@ -142,30 +121,7 @@ export const AwaitingClarification: Story = {
 /** The severity select open, including the free-text option the form's Select renders. */
 export const ClarificationSelectOpen: Story = {
 	args: { agent: 'awaiting-clarification', contents: BRIEF },
-	play: async ({ canvasElement }): Promise<void> => {
-		const canvas = within(canvasElement);
-
-		// Open from the keyboard, and retry: the message list remounts its items
-		// while it measures the thread, which can close the popup again. The
-		// "Other" checkbox in the Notify field carries the same text, so assert
-		// on the popup's option role.
-		await waitFor(async () => {
-			const severityLabel = canvas.getByText('Severity');
-			const field = severityLabel.closest('div');
-
-			if (!field) {
-				throw new Error('Severity field is not in the clarification form');
-			}
-
-			within(field).getByRole('combobox').focus();
-			await userEvent.keyboard('{Enter}');
-			await screen.findByRole(
-				'option',
-				{ name: 'Other (type your own)' },
-				{ timeout: 1_000 },
-			);
-		}, untilLoaded);
-	},
+	play: openClarificationSelect,
 };
 
 /** Reopening the page on a thread that has not come back yet. */
@@ -262,19 +218,7 @@ export const NegativeFeedback: Story = {
 
 /** Renaming a thread: the title input the row swaps in. */
 export const ConversationRename: Story = {
-	play: async ({ canvasElement }): Promise<void> => {
-		await clickUntil(async () => {
-			const [actions] = await within(canvasElement).findAllByLabelText(
-				/conversation actions/i,
-				undefined,
-				untilLoaded,
-			);
-
-			return actions;
-		}, /^Rename$/);
-		await userEvent.click(screen.getByText('Rename'));
-		await within(canvasElement).findByDisplayValue(/checkout p99 regression/i);
-	},
+	play: renameConversation,
 };
 
 /** What a conversation row offers: rename, a link to it, and archiving. */
