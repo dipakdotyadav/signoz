@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import cx from 'classnames';
 import { Button } from '@signozhq/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@signozhq/ui/popover';
 import { Tooltip } from '@signozhq/ui/tooltip';
@@ -20,8 +21,9 @@ import { matchRoute } from 'lib/router/matchRoute';
 import { useAppLocation } from 'lib/router/useAppLocation';
 import { FolderClock } from '@signozhq/icons';
 
-import { getSupportChatClearance } from '../SupportButton/supportChat';
+import { isSupportChatEvent } from '../SupportButton/supportChat';
 import NozHistoryList from './NozHistoryList';
+import { useSupportChatClearance } from './useSupportChatClearance';
 
 import styles from './NozHistory.module.scss';
 
@@ -38,7 +40,8 @@ function NozHistory(): JSX.Element | null {
 	const isDrawerOpen = useAIAssistantStore((s) => s.isDrawerOpen);
 	const loadThread = useAIAssistantStore((s) => s.loadThread);
 	const [isOpen, setIsOpen] = useState(false);
-	const [supportChatClearance, setSupportChatClearance] = useState(0);
+	const { clearance: supportChatClearance, isSliding } =
+		useSupportChatClearance(isOpen);
 
 	// Chats saved on the server, newest first; unsent drafts don't count.
 	const recent = useMemo(
@@ -77,8 +80,14 @@ function NozHistory(): JSX.Element | null {
 	const handleOpenChange = useCallback((open: boolean): void => {
 		setIsOpen(open);
 		if (open) {
-			setSupportChatClearance(getSupportChatClearance());
 			closeAIAssistant();
+		}
+	}, []);
+
+	// The support chat opens beside the list rather than closing it.
+	const handleInteractOutside = useCallback((event: Event): void => {
+		if (isSupportChatEvent(event)) {
+			event.preventDefault();
 		}
 	}, []);
 
@@ -109,13 +118,14 @@ function NozHistory(): JSX.Element | null {
 					</PopoverTrigger>
 				</Tooltip>
 				<PopoverContent
-					className={styles.popover}
+					className={cx(styles.popover, { [styles.sliding]: isSliding })}
 					side="top"
 					align="end"
 					sideOffset={4}
-					// The support chat stays open over the strip, so the list opens left of it.
+					// The support chat stays open over the strip, so the list keeps left of it.
 					collisionPadding={{ right: supportChatClearance }}
 					sticky="always"
+					onInteractOutside={handleInteractOutside}
 				>
 					<NozHistoryList conversations={recent} onSelect={handleSelect} />
 				</PopoverContent>

@@ -25,6 +25,11 @@
 	--popover-z-index: 1000;
 }
 
+// Radix places the list by its wrapper's transform; ease only the slide, not the first placement.
+:global([data-radix-popper-content-wrapper]):has(> .sliding) {
+	transition: transform 0.2s ease;
+}
+
 .content {
 	display: flex;
 	flex-direction: column;

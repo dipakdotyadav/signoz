@@ -4,7 +4,7 @@ import type {
 } from 'periscope/components/FloatingPanel/types';
 
 // Pylon's own class names, which styles.scss also targets.
-const SUPPORT_CHAT_SELECTOR = '.PylonChat-chatWindowFrameContainer';
+export const SUPPORT_CHAT_SELECTOR = '.PylonChat-chatWindowFrameContainer';
 const SUPPORT_CHAT_CLOSED_CLASS = 'PylonChat-chatWindowFrameContainer--closed';
 
 const listeners = new Set<() => void>();

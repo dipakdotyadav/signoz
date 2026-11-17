@@ -8,12 +8,18 @@ import {
 	useAIAssistantStore,
 } from 'container/AIAssistant/store/useAIAssistantStore';
 import { Conversation } from 'container/AIAssistant/types';
+import { ChatSupportState, useChatSupport } from 'hooks/useChatSupport';
 import { useIsAIAssistantEnabled } from 'hooks/useIsAIAssistantEnabled';
 import { render, screen, userEvent } from 'tests/test-utils';
 
+import SupportButton from '../../SupportButton/SupportButton';
 import NozHistory from '../NozHistory';
 
 jest.mock('hooks/useIsAIAssistantEnabled');
+jest.mock('hooks/useChatSupport', () => ({
+	...jest.requireActual('hooks/useChatSupport'),
+	useChatSupport: jest.fn(),
+}));
 
 const mockEnabled = jest.mocked(useIsAIAssistantEnabled);
 const mockLogEvent = jest.mocked(logEvent);
@@ -186,6 +192,26 @@ describe('NozHistory', () => {
 
 			expect(loadThread).not.toHaveBeenCalled();
 			expect(useAIAssistantStore.getState().isDrawerOpen).toBe(true);
+		});
+
+		it('stays open while Support opens the support chat beside it', async () => {
+			const user = userEvent.setup({ pointerEventsCheck: 0 });
+			jest.mocked(useChatSupport).mockReturnValue(ChatSupportState.Pylon);
+			seed([THREADS.checkout]);
+
+			render(
+				<>
+					<NozHistory />
+					<SupportButton />
+				</>,
+			);
+			await user.click(screen.getByTestId('noz-history-trigger'));
+			await screen.findByTestId('noz-history-item');
+			await user.click(screen.getByTestId('bottom-strip-support'));
+
+			expect(
+				screen.getAllByTestId('noz-history-item').map((row) => row.textContent),
+			).toStrictEqual(['Checkout p99 regression4m']);
 		});
 	});
 });
