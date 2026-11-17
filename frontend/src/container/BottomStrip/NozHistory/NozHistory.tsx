@@ -20,6 +20,7 @@ import { matchRoute } from 'lib/router/matchRoute';
 import { useAppLocation } from 'lib/router/useAppLocation';
 import { FolderClock } from '@signozhq/icons';
 
+import { getSupportChatClearance } from '../SupportButton/supportChat';
 import NozHistoryList from './NozHistoryList';
 
 import styles from './NozHistory.module.scss';
@@ -37,6 +38,7 @@ function NozHistory(): JSX.Element | null {
 	const isDrawerOpen = useAIAssistantStore((s) => s.isDrawerOpen);
 	const loadThread = useAIAssistantStore((s) => s.loadThread);
 	const [isOpen, setIsOpen] = useState(false);
+	const [supportChatClearance, setSupportChatClearance] = useState(0);
 
 	// Chats saved on the server, newest first; unsent drafts don't count.
 	const recent = useMemo(
@@ -75,6 +77,7 @@ function NozHistory(): JSX.Element | null {
 	const handleOpenChange = useCallback((open: boolean): void => {
 		setIsOpen(open);
 		if (open) {
+			setSupportChatClearance(getSupportChatClearance());
 			closeAIAssistant();
 		}
 	}, []);
@@ -110,6 +113,9 @@ function NozHistory(): JSX.Element | null {
 					side="top"
 					align="end"
 					sideOffset={4}
+					// The support chat stays open over the strip, so the list opens left of it.
+					collisionPadding={{ right: supportChatClearance }}
+					sticky="always"
 				>
 					<NozHistoryList conversations={recent} onSelect={handleSelect} />
 				</PopoverContent>
