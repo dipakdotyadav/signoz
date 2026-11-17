@@ -26,11 +26,12 @@ function NotificationSettings(): JSX.Element {
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				Every
 			</Typography>
 			<Input
+				width={120}
 				value={notificationSettings.reNotification.value}
 				placeholder="Enter time interval..."
 				disabled={!notificationSettings.reNotification.enabled}
@@ -73,7 +74,7 @@ function NotificationSettings(): JSX.Element {
 				weight="regular"
 				color="inherit"
 				as="span"
-				textOverflow="wrap"
+				textOverflow="visible"
 			>
 				while
 			</Typography>
