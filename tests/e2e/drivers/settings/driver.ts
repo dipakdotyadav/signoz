@@ -393,7 +393,7 @@ export function settingsDriver(page: Page): Settings {
 			// antd keys each row by the member id; the email is what callers hold.
 			row: (email) => page.locator('tr[data-row-key]').filter({ hasText: email }),
 			inviteButton: () => page.getByTestId('invite-member-btn'),
-			searchInput: () => page.getByTestId('members-search-input'),
+			searchInput: () => inputField(page, 'members-search-input'),
 			resetLinkButton: () => page.getByTestId('member-reset-link-btn'),
 			deniedMessage: () => page.getByText(/is not authorized/).first(),
 			openInvite: async () => {
@@ -424,7 +424,7 @@ export function settingsDriver(page: Page): Settings {
 			},
 			drawer: () => page.getByRole('dialog', { name: 'Member Details' }),
 			nameInput: () => page.getByPlaceholder('Enter name'),
-			roleSelect: () => selectById('member-role'),
+			roleSelect: () => page.getByTestId('member-roles-select'),
 			deleteButton: () => page.getByTestId('member-delete-btn'),
 			setRoles: async (roles) => {
 				await comboboxAt(page, settings.members.roleSelect()).clear();
@@ -433,19 +433,14 @@ export function settingsDriver(page: Page): Settings {
 				}
 			},
 			addRole: async (role) => {
-				await pickInDialog(
-					settings.members.drawer(),
-					settings.members.roleSelect(),
-					role,
-				);
+				await pickRole(settings.members.roleSelect(), role);
 			},
 			removeRole: async (role) => {
-				await settings.members
-					.roleSelect()
-					.locator('.ant-select-selection-item')
-					.filter({ hasText: role })
-					.locator('.ant-select-selection-item-remove')
-					.click();
+				const chip = comboboxAt(page, settings.members.roleSelect())
+					.chips()
+					.filter({ hasText: role });
+				await chip.locator('[data-slot="combobox-chip-remove"]').click();
+				await expect(chip).toHaveCount(0);
 			},
 			saveMember: async () => {
 				await page.getByTestId('member-save-btn').click();
