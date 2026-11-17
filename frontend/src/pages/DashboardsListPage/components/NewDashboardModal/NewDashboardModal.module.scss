@@ -1,3 +1,8 @@
+// The primary tab list is 100% wide plus its inline padding, which overflows the dialog.
+.tabs {
+	--tabs-list-wrapper-primary-inline-size: auto;
+}
+
 // Fixed height so the modal doesn't resize when switching tabs.
 .panel {
 	display: flex;

@@ -8,6 +8,8 @@ import BlankDashboardPanel from './BlankDashboardPanel';
 import ImportJsonPanel from './ImportJsonPanel';
 import TemplatesPanel from './TemplatesPanel';
 
+import styles from './NewDashboardModal.module.scss';
+
 interface Props {
 	open: boolean;
 	onClose: () => void;
@@ -35,6 +37,7 @@ function NewDashboardModal({ open, onClose }: Props): JSX.Element {
 			onClose={(): void => onClose()}
 		>
 			<Tabs
+				className={styles.tabs}
 				variant="primary"
 				orientation="horizontal"
 				alignment="start"
