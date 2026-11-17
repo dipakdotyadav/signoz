@@ -130,6 +130,7 @@ export interface Settings {
 		/** The member's table row. Search for the email first: the list pages at 20. */
 		row(email: string): Locator;
 		inviteButton(): Locator;
+		/** The search Input's frame, which carries its `data-*` attributes. */
 		searchInput(): Locator;
 		resetLinkButton(): Locator;
 		/** The "is not authorized" message a denied list or drawer renders. */
@@ -139,6 +140,7 @@ export interface Settings {
 		invite(rows: { email: string; role: string }[]): Promise<void>;
 		openMember(email: string): Promise<void>;
 		drawer(): Locator;
+		/** The name Input's frame, which carries its `data-*` attributes. */
 		nameInput(): Locator;
 		roleSelect(): Locator;
 		deleteButton(): Locator;
@@ -393,7 +395,7 @@ export function settingsDriver(page: Page): Settings {
 			// antd keys each row by the member id; the email is what callers hold.
 			row: (email) => page.locator('tr[data-row-key]').filter({ hasText: email }),
 			inviteButton: () => page.getByTestId('invite-member-btn'),
-			searchInput: () => inputField(page, 'members-search-input'),
+			searchInput: () => page.getByTestId('members-search-input'),
 			resetLinkButton: () => page.getByTestId('member-reset-link-btn'),
 			deniedMessage: () => page.getByText(/is not authorized/).first(),
 			openInvite: async () => {
@@ -423,7 +425,10 @@ export function settingsDriver(page: Page): Settings {
 				await expect(settings.members.drawer().getByText(email)).toBeVisible();
 			},
 			drawer: () => page.getByRole('dialog', { name: 'Member Details' }),
-			nameInput: () => page.getByPlaceholder('Enter name'),
+			nameInput: () =>
+				page
+					.locator('[data-slot="input"]')
+					.filter({ has: page.getByPlaceholder('Enter name') }),
 			roleSelect: () => page.getByTestId('member-roles-select'),
 			deleteButton: () => page.getByTestId('member-delete-btn'),
 			setRoles: async (roles) => {
