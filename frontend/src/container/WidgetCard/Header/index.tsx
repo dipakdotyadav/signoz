@@ -254,7 +254,7 @@ function WidgetHeader({
 								size="base"
 								weight="regular"
 								color="inherit"
-								as="p"
+								as="div"
 								minWidth={0}
 								maxWidth="80%"
 								textOverflow="ellipsis"
