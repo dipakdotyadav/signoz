@@ -1,0 +1,7 @@
+// Noz's text selection inside this element: an accent band behind page-coloured text.
+@mixin selection {
+	& ::selection {
+		background: var(--accent-primary);
+		color: var(--l1-background);
+	}
+}
