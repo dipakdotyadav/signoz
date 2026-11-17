@@ -97,6 +97,11 @@
 			.error-rate {
 				width: 100px;
 				padding-right: 8px;
+
+				// Progress sets its own value font; match the code values beside it.
+				--progress-value-font-family: var(--code-small-500-font-family);
+				--progress-value-font-size: var(--code-small-500-font-size);
+				--progress-value-font-weight: var(--code-small-500-font-weight);
 			}
 
 			.status-tag {
