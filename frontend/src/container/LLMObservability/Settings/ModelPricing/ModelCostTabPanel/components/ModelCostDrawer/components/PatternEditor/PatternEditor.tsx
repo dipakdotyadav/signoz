@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Badge } from '@signozhq/ui/badge';
 import { Button } from '@signozhq/ui/button';
 import { Input } from '@signozhq/ui/input';
+import { Pill } from '@signozhq/ui/pill';
 import { Typography } from '@signozhq/ui/typography';
-import { X } from '@signozhq/icons';
 
 import styles from './PatternEditor.module.scss';
 
@@ -53,26 +53,27 @@ function PatternEditor({
 			<div className={styles.patternBox}>
 				{patterns.length > 0 && (
 					<div className={styles.patternChips}>
-						{patterns.map((pattern) => (
-							<Badge
-								textTransform="none"
-								key={pattern}
-								color="secondary"
-								variant="outlined"
-							>
-								{pattern}*
-								{!isReadOnly && (
-									<button
-										type="button"
-										aria-label={`Remove pattern ${pattern}`}
-										className={styles.patternChipRemove}
-										onClick={(): void => removePattern(pattern)}
-									>
-										<X size={10} />
-									</button>
-								)}
-							</Badge>
-						))}
+						{patterns.map((pattern) =>
+							isReadOnly ? (
+								<Badge
+									textTransform="none"
+									key={pattern}
+									color="secondary"
+									variant="outlined"
+								>
+									{pattern}*
+								</Badge>
+							) : (
+								<Pill.Closeable
+									key={pattern}
+									maxWidth={240}
+									closeAriaLabel={`Remove pattern ${pattern}`}
+									onClose={(): void => removePattern(pattern)}
+								>
+									{pattern}*
+								</Pill.Closeable>
+							),
+						)}
 					</div>
 				)}
 				{!isReadOnly && (
