@@ -56,7 +56,6 @@
 	@include scrollbar(0.2rem);
 	@include picker-row(12px);
 
-	--button-justify-content: space-between;
 	--button-gap: 8px;
 
 	> [data-slot='button'] {
@@ -81,6 +80,7 @@
 }
 
 .time {
+	margin-left: auto;
 	font-size: var(--periscope-font-size-small);
 	line-height: 18px;
 	color: var(--l3-foreground);
