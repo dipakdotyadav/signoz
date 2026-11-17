@@ -33,6 +33,8 @@ $item-spacing: 8px;
 		@include flex-center;
 		gap: 6px;
 		width: -webkit-fill-available;
+
+		--input-hover-border-color: transparent;
 	}
 
 	&__esc-key {

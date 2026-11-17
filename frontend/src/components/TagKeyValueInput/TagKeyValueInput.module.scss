@@ -18,6 +18,8 @@
 .input {
 	flex: 1;
 	min-width: 120px;
+
+	--input-hover-border-color: transparent;
 }
 
 .error {

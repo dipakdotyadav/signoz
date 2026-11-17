@@ -169,8 +169,9 @@
 .resourceSelectorHeader {
 	border-bottom: 1px solid var(--l2-border);
 
-	// The search Input is unstyled; only its height differs from the default.
+	// The search Input is unstyled; its height and hover border are set here.
 	--input-md-height: 36px;
+	--input-hover-border-color: transparent;
 }
 
 .resourceSelectorItems {

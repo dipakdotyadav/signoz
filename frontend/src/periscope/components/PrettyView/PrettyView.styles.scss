@@ -21,6 +21,7 @@
 		--input-font-family: 'SF Mono', 'Geist Mono', 'Fira Code', monospace;
 		--input-font-size: var(--data-viewer-font-size, 12px);
 		--input-line-height: 18px;
+		--input-hover-border-color: transparent;
 
 		&:focus-within {
 			border-color: var(--primary);
