@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { selectAwaitingUserThreadIds } from 'container/AIAssistant/store/pendingInputSelectors';
 import {
 	openAIAssistant,
 	useAIAssistantStore,
 } from 'container/AIAssistant/store/useAIAssistantStore';
 import type { Conversation } from 'container/AIAssistant/types';
+import { useShallow } from 'zustand/react/shallow';
 
 import { useNozOpenConversationsStore } from './store/useNozOpenConversationsStore';
 
@@ -11,6 +13,8 @@ export interface NozChatTab {
 	threadId: string;
 	title: string | undefined;
 	hasUnreadReply: boolean;
+	/** Noz waits on an approval or answer here, and the chat is not on screen. */
+	isAwaitingUser: boolean;
 	isActive: boolean;
 }
 
@@ -23,8 +27,8 @@ interface UseNozActiveChatsResult {
 /**
  * Open Noz conversations for the strip, kept in localStorage by thread id.
  * A chat joins when it becomes active in the drawer, the modal or the Noz page,
- * or when a reply lands in it; it leaves on close, archive, clear, or once the
- * server no longer lists it.
+ * when a reply lands in it, or when Noz starts waiting on the user in it; it
+ * leaves on close, archive, clear, or once the server no longer lists it.
  *
  * On the Noz page a chat opens in the page itself, which follows the active chat.
  */
@@ -38,6 +42,9 @@ export function useNozActiveChats(
 
 	const conversations = useAIAssistantStore((s) => s.conversations);
 	const unreadReplyIds = useAIAssistantStore((s) => s.unreadReplyIds);
+	const awaitingThreadIds = useAIAssistantStore(
+		useShallow(selectAwaitingUserThreadIds),
+	);
 	const activeConversationId = useAIAssistantStore(
 		(s) => s.activeConversationId,
 	);
@@ -81,6 +88,15 @@ export function useNozActiveChats(
 		});
 	}, [unreadReplyIds, conversations, openTab]);
 
+	// Only a chat that starts waiting joins, so closing one already waiting sticks.
+	const seenAwaitingThreadIdsRef = useRef<readonly string[]>([]);
+	useEffect(() => {
+		awaitingThreadIds
+			.filter((threadId) => !seenAwaitingThreadIdsRef.current.includes(threadId))
+			.forEach((threadId) => openTab(threadId));
+		seenAwaitingThreadIdsRef.current = awaitingThreadIds;
+	}, [awaitingThreadIds, openTab]);
+
 	// Before the first successful fetch, a missing thread may only be unloaded.
 	useEffect(() => {
 		const staleThreadIds = threadIds.filter((threadId) => {
@@ -99,12 +115,15 @@ export function useNozActiveChats(
 				if (!conversation || conversation.archived) {
 					return [];
 				}
+				const isActive =
+					isAssistantOpen && activeConversationId === conversation.id;
 				return [
 					{
 						threadId,
 						title: conversation.title,
 						hasUnreadReply: unreadReplyIds.includes(conversation.id),
-						isActive: isAssistantOpen && activeConversationId === conversation.id,
+						isAwaitingUser: !isActive && awaitingThreadIds.includes(threadId),
+						isActive,
 					},
 				];
 			}),
@@ -112,6 +131,7 @@ export function useNozActiveChats(
 			threadIds,
 			conversationByThreadId,
 			unreadReplyIds,
+			awaitingThreadIds,
 			isAssistantOpen,
 			activeConversationId,
 		],
