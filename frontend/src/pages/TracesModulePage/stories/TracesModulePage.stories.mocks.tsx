@@ -10,8 +10,10 @@ import { USER_PREFERENCES } from 'constants/userPreferences';
 import { ExplorerViews } from 'pages/LogsExplorer/utils';
 import { spanPercentilesResponse } from 'pages/TraceDetailsV3/stories/__story_mockdata__/traceDetails';
 import type { QueryRangeRequestV5 } from 'types/api/v5/queryRange';
+import { USER_ROLES } from 'types/roles';
 import { explorerViewToPanelType } from 'utils/explorerUtils';
 
+import { accessFor } from '@/storybook/access/access';
 import {
 	choiceControl,
 	countControl,
@@ -29,6 +31,7 @@ import {
 
 import {
 	exportDashboardsResponse,
+	ORDERS_SPAN_ROWS,
 	savedTraceViewsResponse,
 	SPAN_LOGS_STATES,
 	spanLogRows,
@@ -357,3 +360,50 @@ export const tracesMocks = defineStoryMocks({
 });
 
 export type TracesArgs = PageStoryArgs<typeof tracesMocks>;
+
+/** The span drawer opens from a row of the spans list, so no other view has one. */
+export const listsOrdersSpan = (args: TracesArgs): boolean =>
+	args.tab === 'explorer' &&
+	args.view === ExplorerViews.LIST &&
+	args.dataState === 'loaded' &&
+	args.spans >= ORDERS_SPAN_ROWS;
+
+/** What the drawer's Logs tab settles on, from the two controls that decide it. */
+export type DrawerLogs =
+	| 'waiting'
+	| 'error'
+	| 'logs'
+	| 'trace-only'
+	| 'none'
+	| 'span-empty';
+
+export const drawerLogsOf = ({
+	spanLogs,
+	traceSummary,
+}: Pick<TracesArgs, 'spanLogs' | 'traceSummary'>): DrawerLogs => {
+	if (traceSummary === 'loading' || spanLogs === 'loading') {
+		return 'waiting';
+	}
+
+	if (spanLogs === 'error') {
+		return 'error';
+	}
+
+	if (spanLogs === 'span') {
+		return 'logs';
+	}
+
+	// Without the trace bounds the drawer never checks the trace's own logs.
+	if (traceSummary === 'not found') {
+		return 'span-empty';
+	}
+
+	return spanLogs === 'trace only' ? 'trace-only' : 'none';
+};
+
+/** `hasEditPermission`, which every funnel action gates on. */
+export const canEditFunnels = (args: TracesArgs): boolean => {
+	const { legacyRole } = accessFor(args.access, args.permissions, args.revoked);
+
+	return legacyRole === USER_ROLES.ADMIN || legacyRole === USER_ROLES.EDITOR;
+};

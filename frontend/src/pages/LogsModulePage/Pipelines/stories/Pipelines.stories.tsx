@@ -4,6 +4,12 @@ import { screen, userEvent, within } from 'storybook/test';
 import { storyMocks } from '@/storybook/controls/defineStoryMocks';
 import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
+import {
+	addSeverityParserProcessor,
+	clickFirst,
+	enterEditMode,
+	untilLoaded,
+} from './__story_mockdata__/pipelines.play';
 import { pipelinesMocks } from './Pipelines.stories.mocks';
 
 import LogsModulePage from '../../LogsModulePage';
@@ -29,37 +35,6 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<PipelinesArgs>;
-
-/** The page fetches before it renders a row, which outlasts the 1s default. */
-const untilLoaded = { timeout: 15_000 };
-
-/** Row actions repeat per pipeline, so a story that opens one takes the first. */
-const clickFirst = async (
-	canvasElement: HTMLElement,
-	testId: string,
-): Promise<void> => {
-	const [action] = await within(canvasElement).findAllByTestId(
-		testId,
-		undefined,
-		untilLoaded,
-	);
-
-	await userEvent.click(action);
-};
-
-/**
- * Editing is a mode the whole table is in: the row actions, the drag handles and
- * the save bar only exist inside it.
- */
-const enterEditMode = async (canvasElement: HTMLElement): Promise<void> => {
-	await userEvent.click(
-		await within(canvasElement).findByText(
-			/enter edit mode/i,
-			undefined,
-			untilLoaded,
-		),
-	);
-};
 
 /**
  * The pipelines tab: the processors the org runs over logs before storing them,
@@ -118,12 +93,7 @@ export const AddProcessor: Story = {
 
 /** Severity Parser is the type whose mapping fields are CSV inputs. */
 export const AddSeverityParserProcessor: Story = {
-	play: async (context): Promise<void> => {
-		await AddProcessor.play?.(context);
-		await userEvent.click(await screen.findByText('Grok'));
-		await userEvent.click(await screen.findByTitle('Severity Parser'));
-		await screen.findByText('Parse Severity Value From');
-	},
+	play: addSeverityParserProcessor,
 };
 
 /**

@@ -5,7 +5,18 @@
 
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
-interface MountContext {
+import {
+	drawerLogsOf,
+	listsOrdersSpan,
+	type TracesArgs,
+} from '../TracesModulePage.stories.mocks';
+import { ORDERS_OPERATION } from './traces';
+
+interface PlayContext {
+	args: TracesArgs;
+}
+
+interface MountContext extends PlayContext {
 	mount: () => Promise<unknown>;
 }
 
@@ -18,7 +29,7 @@ const findOrdersRow = (): Promise<HTMLElement> =>
 	waitFor(async (): Promise<HTMLElement> => {
 		const match = screen
 			.getAllByTestId(/^traces-table-row-/)
-			.find((candidate) => candidate.textContent?.includes('POST /api/orders'));
+			.find((candidate) => candidate.textContent?.includes(ORDERS_OPERATION));
 
 		await expect(match).toBeDefined();
 
@@ -28,7 +39,7 @@ const findOrdersRow = (): Promise<HTMLElement> =>
 const openDrawer = async (): Promise<HTMLElement> => {
 	const row = await findOrdersRow();
 
-	await userEvent.click(within(row).getByText('POST /api/orders'));
+	await userEvent.click(within(row).getByText(ORDERS_OPERATION));
 
 	return screen.findByTestId('span-details-drawer');
 };
@@ -41,33 +52,69 @@ const openLogsTab = async (): Promise<HTMLElement> => {
 	return drawer;
 };
 
-export const showsSpanDetails = async (): Promise<void> => {
+/** Mounts, then opens the Logs tab, unless the list has no span to open it on. */
+const mountOnLogsTab = async (
+	mount: MountContext['mount'],
+	args: TracesArgs,
+): Promise<HTMLElement | null> => {
+	await mount();
+
+	return listsOrdersSpan(args) ? openLogsTab() : null;
+};
+
+export const showsSpanDetails = async ({
+	args,
+}: PlayContext): Promise<void> => {
+	if (!listsOrdersSpan(args)) {
+		return;
+	}
+
 	const drawer = await openDrawer();
 
-	await expect(
-		await within(drawer).findByText(/of total exec time/, undefined, untilLoaded),
-	).toBeVisible();
+	// The percentage is read off the trace summary.
+	if (args.traceSummary === 'found') {
+		await expect(
+			await within(drawer).findByText(
+				/of total exec time/,
+				undefined,
+				untilLoaded,
+			),
+		).toBeVisible();
+	}
 };
 
 export const openSpanDetails = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
 	await mount();
-	await showsSpanDetails();
+	await showsSpanDetails({ args });
 };
 
 export const hoverOrdersRow = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
 	await mount();
+
+	if (!listsOrdersSpan(args)) {
+		return;
+	}
+
 	await userEvent.hover(await findOrdersRow());
 
 	await expect(await screen.findByTestId('span-row-open-trace')).toBeVisible();
 };
 
-export const showsSpanLogs = async ({ mount }: MountContext): Promise<void> => {
-	await mount();
-	const drawer = await openLogsTab();
+export const showsSpanLogs = async ({
+	mount,
+	args,
+}: MountContext): Promise<void> => {
+	const drawer = await mountOnLogsTab(mount, args);
+
+	if (!drawer || drawerLogsOf(args) !== 'logs') {
+		return;
+	}
 
 	await expect(
 		(
@@ -82,9 +129,13 @@ export const showsSpanLogs = async ({ mount }: MountContext): Promise<void> => {
 
 export const showsTraceOnlyLogs = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
-	await mount();
-	const drawer = await openLogsTab();
+	const drawer = await mountOnLogsTab(mount, args);
+
+	if (!drawer || drawerLogsOf(args) !== 'trace-only') {
+		return;
+	}
 
 	await expect(
 		await within(drawer).findByText(
@@ -95,9 +146,15 @@ export const showsTraceOnlyLogs = async ({
 	).toBeVisible();
 };
 
-export const showsNoLogs = async ({ mount }: MountContext): Promise<void> => {
-	await mount();
-	const drawer = await openLogsTab();
+export const showsNoLogs = async ({
+	mount,
+	args,
+}: MountContext): Promise<void> => {
+	const drawer = await mountOnLogsTab(mount, args);
+
+	if (!drawer || drawerLogsOf(args) !== 'none') {
+		return;
+	}
 
 	await expect(
 		await within(drawer).findByText(
@@ -110,27 +167,40 @@ export const showsNoLogs = async ({ mount }: MountContext): Promise<void> => {
 
 export const showsWithoutTraceSummary = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
-	await mount();
-	const drawer = await openLogsTab();
+	const drawer = await mountOnLogsTab(mount, args);
 
-	await expect(
-		await within(drawer).findByText(
-			'No logs found for this span.',
-			undefined,
-			untilLoaded,
-		),
-	).toBeVisible();
-	await expect(
-		within(drawer).queryByText(/of total exec time/),
-	).not.toBeInTheDocument();
+	if (!drawer) {
+		return;
+	}
+
+	if (drawerLogsOf(args) === 'span-empty') {
+		await expect(
+			await within(drawer).findByText(
+				'No logs found for this span.',
+				undefined,
+				untilLoaded,
+			),
+		).toBeVisible();
+	}
+
+	if (args.traceSummary === 'not found') {
+		await expect(
+			within(drawer).queryByText(/of total exec time/),
+		).not.toBeInTheDocument();
+	}
 };
 
 export const showsTraceSummaryLoading = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
-	await mount();
-	await openLogsTab();
+	const drawer = await mountOnLogsTab(mount, args);
+
+	if (!drawer || args.traceSummary !== 'loading') {
+		return;
+	}
 
 	await expect(
 		await screen.findByTestId('open-in-explorer-button'),
@@ -139,9 +209,13 @@ export const showsTraceSummaryLoading = async ({
 
 export const showsLogsError = async ({
 	mount,
+	args,
 }: MountContext): Promise<void> => {
-	await mount();
-	const drawer = await openLogsTab();
+	const drawer = await mountOnLogsTab(mount, args);
+
+	if (!drawer || drawerLogsOf(args) !== 'error') {
+		return;
+	}
 
 	await expect(
 		await within(drawer).findByText(

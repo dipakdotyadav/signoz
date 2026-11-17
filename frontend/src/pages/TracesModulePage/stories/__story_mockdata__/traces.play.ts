@@ -15,7 +15,10 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 
 import { grantsAll } from '@/storybook/access/access';
 
-import type { TracesArgs } from '../TracesModulePage.stories.mocks';
+import {
+	canEditFunnels,
+	type TracesArgs,
+} from '../TracesModulePage.stories.mocks';
 
 interface PlayContext {
 	canvasElement: HTMLElement;
@@ -194,17 +197,18 @@ export const openCreateFunnel = async ({
 	canvasElement,
 	args,
 }: PlayContext): Promise<void> => {
-	if (args.tab !== 'funnels') {
+	if (args.tab !== 'funnels' || !canEditFunnels(args)) {
 		return;
 	}
 
-	await userEvent.click(
-		await within(canvasElement).findByRole(
-			'button',
-			{ name: /new funnel/i },
-			untilLoaded,
-		),
+	// With no funnels the empty state offers the same button beside the header's.
+	const [newFunnel] = await within(canvasElement).findAllByRole(
+		'button',
+		{ name: /new funnel/i },
+		untilLoaded,
 	);
+
+	await userEvent.click(newFunnel);
 	await screen.findByRole('dialog', { name: /create new funnel/i });
 };
 
@@ -213,7 +217,12 @@ export const openRenameFunnel = async ({
 	canvasElement,
 	args,
 }: PlayContext): Promise<void> => {
-	if (args.tab !== 'funnels' || args.funnels === 0) {
+	if (
+		args.tab !== 'funnels' ||
+		args.funnels === 0 ||
+		args.dataState !== 'loaded' ||
+		!canEditFunnels(args)
+	) {
 		return;
 	}
 

@@ -21,6 +21,7 @@ import {
 	toggleControl,
 } from '@/storybook/controls/controls';
 import { defineStoryMocks } from '@/storybook/controls/defineStoryMocks';
+import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 import {
 	fieldKeysResponse,
 	fieldValuesResponse,
@@ -43,6 +44,7 @@ import {
 	spanMatchRows,
 	spanPercentilesResponse,
 	STORY_TRACE_ID,
+	threadSpanCount,
 	traceAggregationsResponse,
 	traceDetailFieldKeys,
 	traceDetailFieldValues,
@@ -355,8 +357,32 @@ export const traceDetailsMocks = defineStoryMocks({
 	},
 });
 
+export type TraceDetailsArgs = PageStoryArgs<typeof traceDetailsMocks>;
+
 /** The waterfall renders once the trace resolves, which outlasts the 1s default. */
 export const untilLoaded = { timeout: 15_000 };
+
+/** The header actions and the span rows are the overview tab's, once a trace loads. */
+export const showsTrace = ({
+	tab,
+	spans,
+	dataState,
+}: Pick<TraceDetailsArgs, 'tab' | 'spans' | 'dataState'>): boolean =>
+	tab === TraceDetailsTab.Overview && spans > 0 && dataState === 'loaded';
+
+/** The thread lists the spans that carry messages, which only the AI scenario has. */
+export const listsThread = ({
+	tab,
+	scenario,
+	spans,
+	dataState,
+}: Pick<
+	TraceDetailsArgs,
+	'tab' | 'scenario' | 'spans' | 'dataState'
+>): boolean =>
+	tab === TraceDetailsTab.Thread &&
+	dataState === 'loaded' &&
+	threadSpanCount(scenario, spans) > 0;
 
 /** Opens the pretty view's action menu on the first row that offers `item`. */
 export const openRowMenu = async (
