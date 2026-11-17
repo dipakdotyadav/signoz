@@ -125,5 +125,5 @@ export const openCreateFunnelStep = async ({
 	await userEvent.click(
 		await screen.findByRole('button', { name: /create new funnel/i }),
 	);
-	await screen.findByTestId('create-funnel-name-input');
+	await screen.findByTestId('create-funnel-name-input-field');
 };

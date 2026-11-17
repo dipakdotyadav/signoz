@@ -16,7 +16,6 @@ import {
 	MEMBERS_PAGE_SIZE,
 	membersMocks,
 	offersRole,
-	openInviteRoleDropdown,
 	openMember,
 	openResetLink,
 	roleItemTestId,
@@ -208,19 +207,23 @@ export const selectInviteRoles = async (
 		return;
 	}
 	await openInviteForm(context);
-	await openInviteRoleDropdown(0);
+	const [trigger] = await findInviteRoleTriggers();
+	const triggerTestId = trigger.dataset.testid ?? '';
+
+	await userEvent.click(trigger);
 	for (const role of roles) {
-		await pickOpenRole(role);
+		await userEvent.click(
+			await screen.findByTestId(
+				roleItemTestId(triggerTestId, role),
+				undefined,
+				untilLoaded,
+			),
+		);
 	}
 	await closeRoles();
-	// The open list titles its options too, so the check is scoped to the selected tags.
-	await waitFor(
-		() =>
-			expect(
-				document.querySelector(
-					`.ant-select-selection-item[title="${roles[roles.length - 1]}"]`,
-				),
-			).toBeVisible(),
+	await screen.findByTestId(
+		`${triggerTestId}-chip-role-${roles[roles.length - 1]}`,
+		undefined,
 		untilLoaded,
 	);
 };

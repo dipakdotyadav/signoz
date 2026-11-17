@@ -6,6 +6,7 @@
 import { expect, screen, userEvent, within } from 'storybook/test';
 
 import { isCloudShell } from '@/storybook/globals/appShellMocks';
+import { findToastText } from '@/storybook/play/toastText';
 
 import {
 	canCreate,

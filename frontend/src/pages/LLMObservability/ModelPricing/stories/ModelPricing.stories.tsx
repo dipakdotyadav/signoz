@@ -69,22 +69,6 @@ export const ModelCostDrawerCreate: Story = {
 	play: openModelCostDrawerCreate,
 };
 
-/**
- * The first pricing rule's menu, open over the table: edit the rule or drop it.
- */
-export const ModelCostActionsMenu: Story = {
-	play: async ({ canvasElement }): Promise<void> => {
-		const [first] = await within(canvasElement).findAllByRole(
-			'button',
-			{ name: 'Model cost actions' },
-			{ timeout: 10000 },
-		);
-
-		await userEvent.click(first);
-		await screen.findByRole('menu');
-	},
-};
-
 /** The first pricing rule's drawer, opened from its row menu. */
 export const ModelCostDrawer: Story = {
 	play: async (context): Promise<void> => {
