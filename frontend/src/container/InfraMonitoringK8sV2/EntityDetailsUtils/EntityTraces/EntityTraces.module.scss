@@ -36,8 +36,10 @@
 	flex: 1;
 }
 
+// Break between words, never inside one, so columns size to their content.
 .entityTracesTable {
 	margin-top: var(--spacing-8);
+	--typography-overflow-wrap: normal;
 }
 
 .controls {
