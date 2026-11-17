@@ -539,7 +539,6 @@ function ServiceDetails({
 				orientation="horizontal"
 				alignment="start"
 				defaultValue="overview"
-				className="aws-service-details-tabs"
 				items={[
 					{
 						children: renderOverview(),

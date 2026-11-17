@@ -1,6 +1,6 @@
 import { Toaster } from '@signozhq/ui/toast';
 
-import styles from './AppToaster.module.scss';
+import './AppToaster.module.scss';
 
 // The bottom clears the page-size select of a pagination bar, 83px above the bottom strip, and
 // the 56px footer of a drawer or dialog panel, which sits 16px from the edge of the window.
@@ -12,9 +12,7 @@ const OFFSET = {
 };
 
 function AppToaster(): JSX.Element {
-	return (
-		<Toaster position="bottom-right" offset={OFFSET} className={styles.toaster} />
-	);
+	return <Toaster position="bottom-right" offset={OFFSET} />;
 }
 
 export default AppToaster;

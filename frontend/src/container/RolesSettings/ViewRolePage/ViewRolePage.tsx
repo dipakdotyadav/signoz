@@ -179,15 +179,17 @@ function ViewRoleContentInner({
 
 			<Divider />
 
-			<Tabs
-				variant="primary"
-				orientation="horizontal"
-				alignment="start"
-				className={styles.roleTabs}
-				value={activeTab}
-				onChange={handleTabChange}
-				items={tabItems}
-			/>
+			<div className={styles.roleTabs}>
+				<Tabs
+					variant="primary"
+					orientation="horizontal"
+					alignment="start"
+					value={activeTab}
+					onChange={handleTabChange}
+					noTabContentPadding
+					items={tabItems}
+				/>
+			</div>
 		</div>
 	);
 }

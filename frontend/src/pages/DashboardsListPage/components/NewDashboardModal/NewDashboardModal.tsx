@@ -36,31 +36,32 @@ function NewDashboardModal({ open, onClose }: Props): JSX.Element {
 			width="wide"
 			onClose={(): void => onClose()}
 		>
-			<Tabs
-				className={styles.tabs}
-				variant="primary"
-				orientation="horizontal"
-				alignment="start"
-				value={tab}
-				onChange={handleTabChange}
-				items={[
-					{
-						key: 'blank',
-						label: 'Blank',
-						children: <BlankDashboardPanel onClose={onClose} />,
-					},
-					{
-						key: 'template',
-						label: 'From a template',
-						children: <TemplatesPanel />,
-					},
-					{
-						key: 'import',
-						label: 'Import JSON',
-						children: <ImportJsonPanel onClose={onClose} />,
-					},
-				]}
-			/>
+			<div className={styles.tabs}>
+				<Tabs
+					variant="primary"
+					orientation="horizontal"
+					alignment="start"
+					value={tab}
+					onChange={handleTabChange}
+					items={[
+						{
+							key: 'blank',
+							label: 'Blank',
+							children: <BlankDashboardPanel onClose={onClose} />,
+						},
+						{
+							key: 'template',
+							label: 'From a template',
+							children: <TemplatesPanel />,
+						},
+						{
+							key: 'import',
+							label: 'Import JSON',
+							children: <ImportJsonPanel onClose={onClose} />,
+						},
+					]}
+				/>
+			</div>
 		</Dialog>
 	);
 }

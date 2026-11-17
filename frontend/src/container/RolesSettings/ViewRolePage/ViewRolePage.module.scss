@@ -74,12 +74,12 @@
 	background: var(--l1-border);
 }
 
+// The one grid row stretches the Tabs root to the height left on the page.
 .roleTabs {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-rows: minmax(0, 1fr);
 	flex: 1;
 	min-height: 0;
-	--tabs-content-padding: 0px;
 
 	[role='tabpanel'] {
 		display: flex;

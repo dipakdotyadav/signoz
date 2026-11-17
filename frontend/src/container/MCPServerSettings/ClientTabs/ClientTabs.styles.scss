@@ -1,9 +1,3 @@
-.mcp-client-tabs-root {
-	// Remove default tab content padding/margin — the card provides spacing.
-	--tabs-content-padding: 0;
-	--tabs-content-margin: var(--spacing-4) 0 0;
-}
-
 .mcp-client-tabs {
 	&__snippet-wrapper {
 		display: flex;

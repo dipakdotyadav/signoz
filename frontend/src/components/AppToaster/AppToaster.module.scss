@@ -1,5 +1,4 @@
 // Clears the header of a drawer or dialog panel, 16px from the edge plus 48px or 56px.
-:global(body):has([data-slot='drawer-popup'], [data-slot='dialog-popup'])
-	.toaster {
+:global(body):has([data-slot='drawer-popup'], [data-slot='dialog-popup']) {
 	--toast-viewport-offset-top: var(--spacing-40);
 }

@@ -404,7 +404,6 @@ function SpanDetailsContent({
 						variant="secondary"
 						orientation="horizontal"
 						alignment="start"
-						className={styles.tabsScroll}
 						value={activeTab}
 						onChange={handleTabChange}
 						noTabContentPadding
