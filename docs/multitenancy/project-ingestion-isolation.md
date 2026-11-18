@@ -177,3 +177,13 @@ The V5 bucket cache is namespaced by organization in the cache backend. Project-
 Both cache reads and writes derive the key from request context. The project identifier comes only from the server-authenticated `TenantScope`; an organization mismatch is marked as an invalid scoped key rather than falling back to the organization-wide key. Query request validation remains responsible for rejecting the mismatch before execution.
 
 Regression coverage verifies distinct keys for two projects in the same organization, separation from organization-wide keys, invalid-scope non-fallback, and end-to-end bucket-cache reads/writes across two projects with identical query fingerprints.
+
+## Metrics reduction and derived-series isolation
+
+The companion Community Edition collector's metric reduction rules can remove resource and datapoint labels before writing reduced time-series rows. Tenant identifiers are therefore protected labels: `signoz.org.id` and `signoz.project.id` must survive both drop-mode and keep-mode reduction. The guard is enforced in the reduction function itself, not only during rule loading, so all rule sources preserve the tenant dimensions.
+
+The multi-tenant collector overlay also includes both tenant identifiers in the span-metrics dimensions. This ensures span-derived metrics retain project identity when traces are converted into metrics.
+
+Regression tests in the collector verify that reduced rows retain both tenant attributes and that otherwise-identical series from two projects retain distinct reduced fingerprints. These tests complement the query-builder storage tests, which verify that mandatory tenant predicates compile for traces, logs, and metrics.
+
+This does not replace an end-to-end ClickHouse test: the full ingestion -> spanmetrics/reduction -> persisted rows -> V5 query path still needs to be exercised against a real ClickHouse instance.
