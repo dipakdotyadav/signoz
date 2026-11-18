@@ -90,8 +90,7 @@ const EXPECTED_SIGNALS: Record<PanelKind, TelemetrytypesSignalDTO[]> = {
 	'signoz/AreaChartPanel': [metrics, logs, traces],
 	'signoz/NumberPanel': [metrics, logs, traces],
 	'signoz/HistogramPanel': [metrics, logs, traces],
-	// A heatmap needs a bucket axis, which only a metric carries.
-	'signoz/HeatmapPanel': [metrics],
+	'signoz/HeatmapPanel': [metrics, logs, traces],
 	'signoz/PieChartPanel': [metrics, logs, traces],
 	'signoz/TablePanel': [metrics, logs, traces],
 	// List renders raw rows; metrics produce no row data.

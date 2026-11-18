@@ -1,4 +1,5 @@
 import { ATTRIBUTE_TYPES } from 'constants/queryBuilder';
+import { withHeatmapField, withoutHeatmapField } from 'lib/query/heatmapField';
 import type {
 	IBuilderQuery,
 	Query,
@@ -33,13 +34,14 @@ const HEATMAP_HISTOGRAM_SPACE_AGGREGATION = 'count';
  *
  * Percentiles go the same way: a histogram heatmap takes its axis from the `le` labels,
  * so a percentile draws the grid a count already draws, and the statement builder sums
- * the `le` counts either way.
+ * the `le` counts either way. A logs or traces function aggregation gives way to a field.
  */
 export function withSingleHeatmapQuery(query: Query): Query {
-	const [first] = query.builder.queryData;
-	if (!first) {
+	const [original] = query.builder.queryData;
+	if (!original) {
 		return query;
 	}
+	const first = withHeatmapField(original);
 
 	return {
 		...query,
@@ -77,13 +79,15 @@ function withoutPercentile<T extends string | undefined>(
  * Undoes the count above: every other kind offers a histogram metric percentiles alone,
  * so a count carried out of a heatmap would sit in the selector with no option behind
  * it. Other metric types are left alone — count is a real choice for a sum or a gauge.
+ * A logs or traces bare field goes back into a function.
  */
 export function withPercentileHistogramAggregation(query: Query): Query {
 	return {
 		...query,
 		builder: {
 			...query.builder,
-			queryData: query.builder.queryData.map((queryData) => {
+			queryData: query.builder.queryData.map((original) => {
+				const queryData = withoutHeatmapField(original);
 				if (
 					!HISTOGRAM_ATTRIBUTE_TYPES.has(queryData.aggregateAttribute?.type ?? '')
 				) {
