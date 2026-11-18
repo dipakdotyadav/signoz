@@ -3,6 +3,7 @@ package coretypes
 var Resources = []Resource{
 	ResourceAnonymous,
 	ResourceOrganization,
+	ResourceMetaResourceProject,
 	ResourceRole,
 	ResourceServiceAccount,
 	ResourceUser,
@@ -46,6 +47,7 @@ var Resources = []Resource{
 var (
 	ResourceAnonymous                           Resource = NewResourceAnonymous()
 	ResourceOrganization                                 = NewResourceOrganization()
+	ResourceMetaResourceProject                          = NewResourceMetaResource(KindProject, VerbCreate, VerbList, VerbRead, VerbUpdate, VerbDelete, VerbAttach, VerbDetach)
 	ResourceRole                                         = NewResourceRole()
 	ResourceServiceAccount                               = NewResourceServiceAccount()
 	ResourceUser                                         = NewResourceUser()
