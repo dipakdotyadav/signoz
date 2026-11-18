@@ -19,6 +19,7 @@ import {
 } from '../../queryBuilderFields.utils';
 
 import { isScalarPanelType } from '../panelTypes';
+import HeatmapFieldSelect from './HeatmapFieldSelect';
 import QueryAggregationSelect from './QueryAggregationSelect';
 
 import './QueryAggregation.styles.scss';
@@ -63,15 +64,19 @@ function QueryAggregationOptions({
 			data-testid="query-aggregation-container"
 		>
 			<div className="aggregation-container">
-				<QueryAggregationSelect
-					onChange={onChange}
-					queryData={queryData}
-					maxAggregations={
-						panelType === PANEL_TYPES.VALUE || panelType === PANEL_TYPES.PIE
-							? 1
-							: undefined
-					}
-				/>
+				{panelType === PANEL_TYPES.HEATMAP ? (
+					<HeatmapFieldSelect queryData={queryData} onChange={onChange} />
+				) : (
+					<QueryAggregationSelect
+						onChange={onChange}
+						queryData={queryData}
+						maxAggregations={
+							panelType === PANEL_TYPES.VALUE || panelType === PANEL_TYPES.PIE
+								? 1
+								: undefined
+						}
+					/>
+				)}
 
 				{!stepInterval.hidden && (
 					<div className="query-aggregation-interval">
