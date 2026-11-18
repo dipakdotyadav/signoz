@@ -43,6 +43,7 @@ func (name Kind) Enum() []any {
 	return []any{
 		KindAnonymous,
 		KindOrganization,
+		KindProject,
 		KindRole,
 		KindServiceAccount,
 		KindUser,
