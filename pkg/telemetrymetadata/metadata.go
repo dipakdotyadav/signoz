@@ -923,6 +923,16 @@ func getPriorityForContext(ctx telemetrytypes.FieldContext) int {
 }
 
 
+func addMetricMetadataProjectScope(ctx context.Context, sb *sqlbuilder.SelectBuilder, resourceColumn string) error {
+	scope, ok := ctxtypes.TenantScopeFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	sb.Where(sb.E(resourceColumn+"['signoz.org.id']", scope.OrgID))
+	sb.Where(sb.E(resourceColumn+"['signoz.project.id']", scope.ProjectID))
+	return nil
+}
+
 func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder, resourceColumn string) error {
 	// Metric metadata is derived from resource attributes. Always constrain it
 	// to the authenticated organization; add the project dimension when the
@@ -2634,6 +2644,9 @@ func (t *telemetryMetaStore) GetFirstSeenFromMetricMetadata(ctx context.Context,
 			"min(first_reported_unix_milli) AS first_seen",
 		).From(t.metricsDBName + "." + t.metricsFieldsTblName)
 
+		if err := addMetricMetadataProjectScope(ctx, sb, "resource_attributes"); err != nil {
+			return nil, err
+		}
 		lookupItems := make([]interface{}, 0, len(chunk))
 		for _, key := range chunk {
 			lookupItems = append(lookupItems, sqlbuilder.Tuple(key.MetricName, key.AttributeName, key.AttributeValue))
