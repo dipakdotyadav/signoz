@@ -68,6 +68,16 @@ func applyTenantScope(ctx context.Context, orgID valuer.UUID, req *qbtypes.Query
 			}
 			spec.Filter = appendTenantFilter(spec.Filter, tenantFilter)
 			env.Spec = spec
+		case qbtypes.QueryTypeTraceOperator:
+			spec, ok := env.Spec.(qbtypes.QueryBuilderTraceOperator)
+			if !ok {
+				return errors.NewInvalidInputf(errors.CodeInvalidInput, "unsupported trace operator spec %T for project-scoped query", env.Spec)
+			}
+			// Trace operators combine named trace-builder operands. Validate
+			// references here; each operand is separately tenant-filtered below.
+			if err := spec.ValidateTraceOperator(req.CompositeQuery.Queries); err != nil {
+				return err
+			}
 		case qbtypes.QueryTypeFormula:
 			// Formulas operate on results from the already-scoped builder queries.
 		default:

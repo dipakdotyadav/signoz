@@ -6,6 +6,7 @@ import (
 
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	qbtypes "github.com/SigNoz/signoz/pkg/types/querybuildertypes/querybuildertypesv5"
+	"github.com/SigNoz/signoz/pkg/types/telemetrytypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
 	"github.com/stretchr/testify/require"
 )
@@ -58,6 +59,54 @@ func TestApplyTenantScopeRejectsOrganizationMismatch(t *testing.T) {
 		OrgID: otherOrgID.String(), ProjectID: projectID.String(),
 	})
 	req := &qbtypes.QueryRangeRequest{}
+
+	require.Error(t, applyTenantScope(ctx, orgID, req))
+}
+
+
+func TestApplyTenantScopeSupportsTraceOperatorWithScopedOperands(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	projectID := valuer.MustNewUUID("22222222-2222-4222-8222-222222222222")
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID.String(),
+	})
+	traceQuery := func(name string) qbtypes.QueryEnvelope {
+		return qbtypes.QueryEnvelope{
+			Type: qbtypes.QueryTypeBuilder,
+			Spec: qbtypes.QueryBuilderQuery[qbtypes.TraceAggregation]{
+				Name: name, Signal: telemetrytypes.SignalTraces,
+			},
+		}
+	}
+	req := &qbtypes.QueryRangeRequest{
+		CompositeQuery: qbtypes.CompositeQuery{Queries: []qbtypes.QueryEnvelope{
+			{Type: qbtypes.QueryTypeTraceOperator, Spec: qbtypes.QueryBuilderTraceOperator{Name: "T", Expression: "A => B"}},
+			traceQuery("A"),
+			traceQuery("B"),
+		}},
+	}
+
+	require.NoError(t, applyTenantScope(ctx, orgID, req))
+	for _, env := range req.CompositeQuery.Queries[1:] {
+		spec := env.Spec.(qbtypes.QueryBuilderQuery[qbtypes.TraceAggregation])
+		require.NotNil(t, spec.Filter)
+		require.Contains(t, spec.Filter.Expression, "resource.signoz.org.id")
+		require.Contains(t, spec.Filter.Expression, "resource.signoz.project.id")
+	}
+}
+
+func TestApplyTenantScopeRejectsTraceOperatorWithUnscopedOperand(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	projectID := valuer.MustNewUUID("22222222-2222-4222-8222-222222222222")
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID.String(),
+	})
+	req := &qbtypes.QueryRangeRequest{
+		CompositeQuery: qbtypes.CompositeQuery{Queries: []qbtypes.QueryEnvelope{
+			{Type: qbtypes.QueryTypeTraceOperator, Spec: qbtypes.QueryBuilderTraceOperator{Name: "T", Expression: "A => Missing"}},
+			{Type: qbtypes.QueryTypeBuilder, Spec: qbtypes.QueryBuilderQuery[qbtypes.TraceAggregation]{Name: "A", Signal: telemetrytypes.SignalTraces}},
+		}},
+	}
 
 	require.Error(t, applyTenantScope(ctx, orgID, req))
 }
