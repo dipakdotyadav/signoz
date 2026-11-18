@@ -42,7 +42,7 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 	)).Methods(http.MethodGet).GetError(); err != nil { return err }
 
 	if err := router.Handle("/api/v2/projects/{id}", handler.New(
-		provider.authzMiddleware.CheckResources(provider.projectHandler.Get, authtypes.SigNozAdminRoleName),
+		provider.authzMiddleware.ProjectAccess(provider.projectHandler.Get, coretypes.VerbRead),
 		handler.OpenAPIDef{
 			ID: "GetProject", Tags: []string{"projects"}, Summary: "Get project",
 			Description: "Gets a project within the authenticated organization",
