@@ -46,3 +46,36 @@ func TestCheckResourcesForUnscopedRequestsUsesProjectScopeAuthorization(t *testi
 	require.True(t, called, "a previously authorized project-scoped request must reach the query handler")
 	require.Equal(t, http.StatusOK, recorder.Code)
 }
+
+func TestRejectProjectHeaderForLegacyQueryRejectsProjectScopedRequest(t *testing.T) {
+	middleware := &AuthZ{}
+	called := false
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+	handler := middleware.RejectProjectHeaderForLegacyQuery(next)
+	req := httptest.NewRequest(http.MethodPost, "/api/v4/query_range", nil)
+	req.Header.Set("X-SigNoz-Project-ID", "22222222-2222-4222-8222-222222222222")
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	require.False(t, called, "legacy query handler must not execute for project-scoped requests")
+	require.Equal(t, http.StatusBadRequest, recorder.Code)
+}
+
+func TestRejectProjectHeaderForLegacyQueryPreservesOrganizationWideRequest(t *testing.T) {
+	middleware := &AuthZ{}
+	called := false
+	next := http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		called = true
+	})
+	handler := middleware.RejectProjectHeaderForLegacyQuery(next)
+	req := httptest.NewRequest(http.MethodPost, "/api/v4/query_range", nil)
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	require.True(t, called, "organization-wide legacy requests must retain backward compatibility")
+	require.Equal(t, http.StatusOK, recorder.Code)
+}
