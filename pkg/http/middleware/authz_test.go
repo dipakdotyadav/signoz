@@ -32,7 +32,7 @@ func TestAuthorizeProjectAccess(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			calls := make([]string, 0, 2)
-			err := authorizeProjectAccess(orgID, projectID, coretypes.VerbRead, func(resource coretypes.Resource, selector coretypes.Selector) error {
+			err := authorizeProjectAccess(orgID, projectID, coretypes.VerbRead, func(resource coretypes.Resource, selector coretypes.Selector, verb coretypes.Verb) error {
 				calls = append(calls, resource.Type().StringValue()+":"+resource.Kind().String())
 				if resource.Type().Equals(coretypes.TypeMetaResource) {
 					return tt.projectErr
