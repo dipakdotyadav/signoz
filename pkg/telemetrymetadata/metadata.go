@@ -215,7 +215,20 @@ func (t *telemetryMetaStore) tracesTblStatementToFieldKeys(ctx context.Context) 
 }
 
 // getTracesKeys returns the keys from the spans that match the field selection criteria.
-func (t *telemetryMetaStore) getTracesKeys(ctx context.Context, fieldKeySelectors []*telemetrytypes.FieldKeySelector) ([]*telemetrytypes.TelemetryFieldKey, bool, error) {
+
+func addTraceMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
+	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
+	if hasProjectScope && scope.OrgID != orgID.String() {
+		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match trace metadata request")
+	}
+	sb.Where(sb.E("org_id", orgID.String()))
+	if hasProjectScope {
+		sb.Where(sb.E("project_id", scope.ProjectID))
+	}
+	return nil
+}
+
+func (t *telemetryMetaStore) getTracesKeys(ctx context.Context, orgID valuer.UUID, fieldKeySelectors []*telemetrytypes.FieldKeySelector) ([]*telemetrytypes.TelemetryFieldKey, bool, error) {
 	ctx = ctxtypes.NewContextWithCommentVals(ctx, map[string]string{
 		instrumentationtypes.TelemetrySignal:  telemetrytypes.SignalTraces.StringValue(),
 		instrumentationtypes.CodeNamespace:    "metadata",
@@ -248,6 +261,9 @@ func (t *telemetryMetaStore) getTracesKeys(ctx context.Context, fieldKeySelector
 			ELSE 5
 		END as priority`,
 	).From(t.tracesDBName + "." + t.spanAttributesKeysTblName)
+	if err := addTraceMetadataTenantScope(ctx, orgID, sb); err != nil {
+		return nil, false, err
+	}
 	var limit int
 
 	conds := []string{}
@@ -1245,7 +1261,7 @@ func (t *telemetryMetaStore) GetKeys(ctx context.Context, orgID valuer.UUID, fie
 
 	switch fieldKeySelector.Signal {
 	case telemetrytypes.SignalTraces:
-		keys, complete, err = t.getTracesKeys(ctx, selectors)
+		keys, complete, err = t.getTracesKeys(ctx, orgID, selectors)
 	case telemetrytypes.SignalLogs:
 		if fieldKeySelector.Source == telemetrytypes.SourceAudit {
 			keys = appendStaticAuditKeys(nil, map[string]*telemetrytypes.TelemetryFieldKey{}, selectors)
@@ -1260,7 +1276,7 @@ func (t *telemetryMetaStore) GetKeys(ctx context.Context, orgID valuer.UUID, fie
 		}
 	case telemetrytypes.SignalUnspecified:
 		// get traces keys
-		tracesKeys, tracesComplete, err := t.getTracesKeys(ctx, selectors)
+		tracesKeys, tracesComplete, err := t.getTracesKeys(ctx, orgID, selectors)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1333,7 +1349,7 @@ func (t *telemetryMetaStore) GetKeysMulti(ctx context.Context, orgID valuer.UUID
 		return nil, false, err
 	}
 	auditKeys := appendStaticAuditKeys(nil, map[string]*telemetrytypes.TelemetryFieldKey{}, auditSelectors)
-	tracesKeys, tracesComplete, err := t.getTracesKeys(ctx, tracesSelectors)
+	tracesKeys, tracesComplete, err := t.getTracesKeys(ctx, orgID, tracesSelectors)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1569,7 +1585,7 @@ func (t *telemetryMetaStore) getSpanFieldValues(ctx context.Context, orgID value
 	knownBool := isKnownBoolField(fieldValueSelector, tracestelemetryschema.IntrinsicFields, tracestelemetryschema.CalculatedFields)
 	names := t.familyValueNames(ctx, orgID, telemetrytypes.SignalTraces, fieldValueSelector)
 	// unix_milli is the hour of the span start
-	return t.getTagTableValues(ctx, t.tracesDBName+"."+t.tracesFieldsTblName, fieldValueSelector, names, knownBool)
+	return t.getTagTableValues(ctx, orgID, t.tracesDBName+"."+t.tracesFieldsTblName, fieldValueSelector, names, knownBool)
 }
 
 func (t *telemetryMetaStore) getLogFieldValues(ctx context.Context, orgID valuer.UUID, fieldValueSelector *telemetrytypes.FieldValueSelector) (*telemetrytypes.TelemetryFieldValues, bool, error) {
@@ -1582,7 +1598,7 @@ func (t *telemetryMetaStore) getLogFieldValues(ctx context.Context, orgID valuer
 	knownBool := isKnownBoolField(fieldValueSelector, logstelemetryschema.IntrinsicFields)
 	names := t.familyValueNames(ctx, orgID, telemetrytypes.SignalLogs, fieldValueSelector)
 	// unix_milli is the hour the log was ingested, not the log's own timestamp
-	return t.getTagTableValues(ctx, t.logsDBName+"."+t.logsFieldsTblName, fieldValueSelector, names, knownBool)
+	return t.getTagTableValues(ctx, orgID, t.logsDBName+"."+t.logsFieldsTblName, fieldValueSelector, names, knownBool)
 }
 
 // tagKeyCondition matches the requested key, or every spelling of its
@@ -1607,8 +1623,13 @@ func tagTableSinceDay(sb *sqlbuilder.SelectBuilder, startUnixMilli int64) {
 // tagTableHasBoolRows reports whether the tag table holds a bool row for the
 // key. Bool rows carry no value, so one row is enough to know the key takes
 // the values true and false.
-func (t *telemetryMetaStore) tagTableHasBoolRows(ctx context.Context, table string, selector *telemetrytypes.FieldValueSelector, names []string) (bool, error) {
+func (t *telemetryMetaStore) tagTableHasBoolRows(ctx context.Context, orgID valuer.UUID, table string, selector *telemetrytypes.FieldValueSelector, names []string) (bool, error) {
 	sb := sqlbuilder.Select("1").From(table)
+	if strings.HasPrefix(table, t.tracesDBName+".") {
+		if err := addTraceMetadataTenantScope(ctx, orgID, sb); err != nil {
+			return false, err
+		}
+	}
 	sb.Where(tagKeyCondition(sb, selector.Name, names))
 	sb.Where(sb.E("tag_data_type", telemetrytypes.FieldDataTypeBool.TagDataType()))
 	if selector.FieldContext != telemetrytypes.FieldContextUnspecified {
@@ -1629,7 +1650,7 @@ func (t *telemetryMetaStore) tagTableHasBoolRows(ctx context.Context, table stri
 // getTagTableValues returns the string and number values of the key from a
 // tag table, and true and false when the key is a known bool field or the
 // table holds bool rows for it. Bool rows do not count towards the limit.
-func (t *telemetryMetaStore) getTagTableValues(ctx context.Context, table string, fieldValueSelector *telemetrytypes.FieldValueSelector, names []string, knownBool bool) (*telemetrytypes.TelemetryFieldValues, bool, error) {
+func (t *telemetryMetaStore) getTagTableValues(ctx context.Context, orgID valuer.UUID, table string, fieldValueSelector *telemetrytypes.FieldValueSelector, names []string, knownBool bool) (*telemetrytypes.TelemetryFieldValues, bool, error) {
 	limit := fieldValueSelector.Limit
 	if limit == 0 {
 		limit = 50
@@ -1642,7 +1663,7 @@ func (t *telemetryMetaStore) getTagTableValues(ctx context.Context, table string
 			return values, true, nil
 		}
 	} else if fieldValueSelector.FieldDataType == telemetrytypes.FieldDataTypeUnspecified {
-		hasBoolRows, err := t.tagTableHasBoolRows(ctx, table, fieldValueSelector, names)
+		hasBoolRows, err := t.tagTableHasBoolRows(ctx, orgID, table, fieldValueSelector, names)
 		if err != nil {
 			return nil, false, err
 		}
@@ -1652,6 +1673,11 @@ func (t *telemetryMetaStore) getTagTableValues(ctx context.Context, table string
 	}
 
 	sb := sqlbuilder.Select("DISTINCT string_value, number_value").From(table)
+	if strings.HasPrefix(table, t.tracesDBName+".") {
+		if err := addTraceMetadataTenantScope(ctx, orgID, sb); err != nil {
+			return nil, false, err
+		}
+	}
 
 	if fieldValueSelector.Name != "" {
 		sb.Where(tagKeyCondition(sb, fieldValueSelector.Name, names))
