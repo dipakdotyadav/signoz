@@ -922,6 +922,22 @@ func getPriorityForContext(ctx telemetrytypes.FieldContext) int {
 	}
 }
 
+
+func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
+	// Metric metadata is derived from resource attributes. Always constrain it
+	// to the authenticated organization; add the project dimension when the
+	// request carries a project-scoped identity.
+	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
+	if hasProjectScope && scope.OrgID != orgID.String() {
+		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match metadata request")
+	}
+	sb.Where(sb.E("resource_attributes['signoz.org.id']", orgID.String()))
+	if hasProjectScope {
+		sb.Where(sb.E("resource_attributes['signoz.project.id']", scope.ProjectID))
+	}
+	return nil
+}
+
 // getMetricsKeys returns the keys from the metrics that match the field selection criteria.
 func (t *telemetryMetaStore) getMetricsKeys(ctx context.Context, orgID valuer.UUID, fieldKeySelectors []*telemetrytypes.FieldKeySelector) ([]*telemetrytypes.TelemetryFieldKey, bool, error) {
 	ctx = ctxtypes.NewContextWithCommentVals(ctx, map[string]string{
