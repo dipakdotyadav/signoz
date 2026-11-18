@@ -228,6 +228,45 @@ func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Ver
 	})
 }
 
+// ProjectHeaderAccess resolves an explicitly selected project for APIs whose
+// routes do not contain a {id} path parameter (for example query-range APIs).
+// The header is only a selector: the project is trusted only after the same
+// project/org authorization check used by ProjectAccess succeeds.
+func (middleware *AuthZ) ProjectHeaderAccess(next http.HandlerFunc, verb coretypes.Verb) http.HandlerFunc {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		claims, err := authtypes.ClaimsFromContext(req.Context())
+		if err != nil {
+			render.Error(rw, err)
+			return
+		}
+
+		orgID, err := valuer.NewUUID(claims.OrgID)
+		if err != nil {
+			render.Error(rw, err)
+			return
+		}
+
+		projectID, err := valuer.NewUUID(req.Header.Get("X-SigNoz-Project-ID"))
+		if err != nil {
+			render.Error(rw, errors.NewInvalidInputf(errors.CodeInvalidInput, "a valid X-SigNoz-Project-ID is required"))
+			return
+		}
+
+		err = authorizeProjectAccess(orgID, projectID, verb, func(resource coretypes.Resource, selector coretypes.Selector, checkVerb coretypes.Verb) error {
+			return middleware.authzService.CheckResource(req.Context(), claims, orgID, authtypes.Relation{Verb: checkVerb}, resource, selector)
+		})
+		if err != nil {
+			render.Error(rw, err)
+			return
+		}
+
+		ctx := ctxtypes.NewContextWithTenantScope(req.Context(), ctxtypes.TenantScope{
+			OrgID: orgID.String(), ProjectID: projectID.String(),
+		})
+		next(rw, req.WithContext(ctx))
+	})
+}
+
 func (middleware *AuthZ) CheckResources(next http.HandlerFunc, roles ...string) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
