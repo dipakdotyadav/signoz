@@ -357,10 +357,12 @@ func (aH *APIHandler) Respond(w http.ResponseWriter, data interface{}) {
 
 // RegisterRoutes registers routes for this handler on the given router
 func (aH *APIHandler) RegisterRoutes(router *mux.Router, am *middleware.AuthZ) {
-	router.HandleFunc("/api/v1/query_range", am.ViewAccess(aH.queryRangeMetrics)).Methods(http.MethodGet)
-	router.HandleFunc("/api/v1/query", am.ViewAccess(aH.queryMetrics)).Methods(http.MethodGet)
-
-	router.HandleFunc("/api/v2/variables/query", am.ViewAccess(aH.queryDashboardVarsV2)).Methods(http.MethodPost)
+	legacyQuery := func(next http.HandlerFunc) http.HandlerFunc {
+		return am.ViewAccess(am.RejectProjectHeaderForLegacyQuery(next))
+	}
+	router.HandleFunc("/api/v1/query_range", legacyQuery(aH.queryRangeMetrics)).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/query", legacyQuery(aH.queryMetrics)).Methods(http.MethodGet)
+	router.HandleFunc("/api/v2/variables/query", legacyQuery(aH.queryDashboardVarsV2)).Methods(http.MethodPost)
 
 	router.HandleFunc("/api/v1/explorer/views", am.ViewAccess(aH.Signoz.Handlers.SavedView.List)).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/explorer/views", am.EditAccess(aH.Signoz.Handlers.SavedView.Create)).Methods(http.MethodPost)
