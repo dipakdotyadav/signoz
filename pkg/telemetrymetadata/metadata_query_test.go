@@ -2,6 +2,9 @@ package telemetrymetadata
 
 import (
 	"context"
+	"github.com/huandu/go-sqlbuilder"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
+	"github.com/SigNoz/signoz/pkg/valuer"
 	"regexp"
 	"testing"
 
@@ -83,3 +86,40 @@ func TestGetFirstSeenFromMetricMetadata(t *testing.T) {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 	}
 }
+
+
+func TestAddMetricMetadataTenantScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	projectID := "22222222-2222-4222-8222-222222222222"
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID,
+	})
+	sb := sqlbuilder.Select("*").From("signoz_metrics.distributed_metadata")
+	require.NoError(t, addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "resource_attributes['signoz.org.id']")
+	require.Contains(t, query, "resource_attributes['signoz.project.id']")
+	require.Contains(t, args, orgID.String())
+	require.Contains(t, args, projectID)
+}
+
+func TestAddMetricMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "99999999-9999-4999-8999-999999999999",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	sb := sqlbuilder.Select("*").From("signoz_metrics.distributed_metadata")
+	require.Error(t, addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"))
+}
+
+func TestAddMetricMetadataTenantScopeUsesOrganizationBoundaryWithoutProject(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	sb := sqlbuilder.Select("*").From("signoz_metrics.distributed_metadata")
+	require.NoError(t, addMetricMetadataTenantScope(context.Background(), orgID, sb, "resource_attributes"))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "resource_attributes['signoz.org.id']")
+	require.NotContains(t, query, "resource_attributes['signoz.project.id']")
+	require.Contains(t, args, orgID.String())
+}
+
