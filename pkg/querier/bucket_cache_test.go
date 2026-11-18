@@ -1665,3 +1665,41 @@ func TestBucketCacheInvalidTenantScopeDoesNotUseOrganizationKey(t *testing.T) {
 	require.Contains(t, key, ":tenant-scope-invalid")
 }
 
+
+func TestBucketCacheDoesNotReuseResultsAcrossProjects(t *testing.T) {
+	bc := createTestBucketCache(t)
+	ctx := context.Background()
+	orgID, err := valuer.NewUUID("11111111-1111-4111-8111-111111111111")
+	require.NoError(t, err)
+	query := &mockQuery{fingerprint: "same-query", startMs: 1_000, endMs: 10_000}
+	step := qbtypes.Step{Duration: time.Second}
+	projectA := ctxtypes.NewContextWithTenantScope(ctx, ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	projectB := ctxtypes.NewContextWithTenantScope(ctx, ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: "33333333-3333-4333-8333-333333333333",
+	})
+
+	bc.Put(projectA, orgID, query, step, &qbtypes.Result{
+		Type: qbtypes.RequestTypeTimeSeries,
+		Value: createTestTimeSeries("project-a", 1_000, 10_000, 1_000),
+	})
+	cachedB, missingB := bc.GetMissRanges(projectB, orgID, query, step)
+	require.Nil(t, cachedB, "project B must not receive project A's cached result")
+	require.Equal(t, []*qbtypes.TimeRange{{From: 1_000, To: 10_000}}, missingB)
+
+	bc.Put(projectB, orgID, query, step, &qbtypes.Result{
+		Type: qbtypes.RequestTypeTimeSeries,
+		Value: createTestTimeSeries("project-b", 1_000, 10_000, 1_000),
+	})
+	cachedA, missingA := bc.GetMissRanges(projectA, orgID, query, step)
+	require.NotNil(t, cachedA)
+	require.Empty(t, missingA)
+	require.Equal(t, "project-a", cachedA.Value.(*qbtypes.TimeSeriesData).QueryName)
+
+	cachedB, missingB = bc.GetMissRanges(projectB, orgID, query, step)
+	require.NotNil(t, cachedB)
+	require.Empty(t, missingB)
+	require.Equal(t, "project-b", cachedB.Value.(*qbtypes.TimeSeriesData).QueryName)
+}
+
