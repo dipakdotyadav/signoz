@@ -54,6 +54,7 @@ func (m *module) Update(ctx context.Context, orgID valuer.UUID, input *types.Pro
 }
 
 func (m *module) Delete(ctx context.Context, orgID, id valuer.UUID) error {
+	if _, err := m.store.Get(ctx, orgID, id); err != nil { return err }
 	return m.store.Delete(ctx, orgID, id)
 }
 
