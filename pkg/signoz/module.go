@@ -32,6 +32,8 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/promote/implpromote"
 	"github.com/SigNoz/signoz/pkg/modules/project"
 	"github.com/SigNoz/signoz/pkg/modules/project/implproject"
+	"github.com/SigNoz/signoz/pkg/modules/projectingestionkey"
+	"github.com/SigNoz/signoz/pkg/modules/projectingestionkey/implprojectingestionkey"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter/implquickfilter"
 	"github.com/SigNoz/signoz/pkg/modules/rawdataexport"
@@ -98,6 +100,7 @@ type Modules struct {
 	LLMPricingRule       llmpricingrule.Module
 	Tag                  tag.Module
 	Project              project.Module
+	ProjectIngestionKey   projectingestionkey.Module
 }
 
 func NewModules(
@@ -170,5 +173,6 @@ func NewModules(
 		LLMPricingRule:       impllmpricingrule.NewModule(impllmpricingrule.NewStore(sqlstore), querier, telemetryMetadataStore, providerSettings),
 		Tag:                  tagModule,
 		Project:              implproject.NewModule(implproject.NewStore(sqlstore), authz, userGetter, serviceAccount),
+		ProjectIngestionKey:   implprojectingestionkey.NewModule(implprojectingestionkey.NewStore(sqlstore)),
 	}
 }
