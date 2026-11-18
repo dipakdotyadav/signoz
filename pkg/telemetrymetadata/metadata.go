@@ -923,7 +923,7 @@ func getPriorityForContext(ctx telemetrytypes.FieldContext) int {
 }
 
 
-func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
+func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder, resourceColumn string) error {
 	// Metric metadata is derived from resource attributes. Always constrain it
 	// to the authenticated organization; add the project dimension when the
 	// request carries a project-scoped identity.
@@ -931,9 +931,9 @@ func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sq
 	if hasProjectScope && scope.OrgID != orgID.String() {
 		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match metadata request")
 	}
-	sb.Where(sb.E("resource_attributes['signoz.org.id']", orgID.String()))
+	sb.Where(sb.E(resourceColumn+"['signoz.org.id']", orgID.String()))
 	if hasProjectScope {
-		sb.Where(sb.E("resource_attributes['signoz.project.id']", scope.ProjectID))
+		sb.Where(sb.E(resourceColumn+"['signoz.project.id']", scope.ProjectID))
 	}
 	return nil
 }
@@ -959,7 +959,7 @@ func (t *telemetryMetaStore) getMetricsKeys(ctx context.Context, orgID valuer.UU
 			END as priority`).
 		From(t.metricsDBName + "." + t.metricsFieldsTblName)
 
-	if err := addMetricMetadataTenantScope(ctx, orgID, sb); err != nil {
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"); err != nil {
 		return nil, false, err
 	}
 
@@ -1844,7 +1844,7 @@ func (t *telemetryMetaStore) getMetricFieldValues(ctx context.Context, orgID val
 		Select("DISTINCT attr_string_value").
 		From(t.metricsDBName + "." + t.metricsFieldsTblName)
 
-	if err := addMetricMetadataTenantScope(ctx, orgID, sb); err != nil {
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"); err != nil {
 		return nil, false, err
 	}
 
@@ -1977,7 +1977,7 @@ func (t *telemetryMetaStore) getIntrinsicMetricFieldValues(ctx context.Context, 
 		if len(values.StringValues) >= limit {
 			break
 		}
-		tableValues, err := t.getIntrinsicMetricFieldValuesForTable(ctx, fieldValueSelector, key, src.tableName, limit, src.extraConds...)
+		tableValues, err := t.getIntrinsicMetricFieldValuesForTable(ctx, orgID, fieldValueSelector, key, src.tableName, limit, src.extraConds...)
 		if err != nil {
 			return nil, err
 		}
@@ -1998,9 +1998,12 @@ func (t *telemetryMetaStore) getIntrinsicMetricFieldValues(ctx context.Context, 
 // getIntrinsicMetricFieldValuesForTable returns the distinct intrinsic field values for the
 // given key from a single time series table. extraConds are appended verbatim (e.g. the
 // buffer's "is_reduced = false" filter).
-func (t *telemetryMetaStore) getIntrinsicMetricFieldValuesForTable(ctx context.Context, fieldValueSelector *telemetrytypes.FieldValueSelector, key telemetrytypes.TelemetryFieldKey, tableName string, limit int, extraConds ...string) ([]string, error) {
+func (t *telemetryMetaStore) getIntrinsicMetricFieldValuesForTable(ctx context.Context, orgID valuer.UUID, fieldValueSelector *telemetrytypes.FieldValueSelector, key telemetrytypes.TelemetryFieldKey, tableName string, limit int, extraConds ...string) ([]string, error) {
 	sb := sqlbuilder.Select(sqlbuilder.Escape(key.Name)).
 		From(t.metricsDBName + "." + tableName)
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attrs"); err != nil {
+		return nil, err
+	}
 
 	if fieldValueSelector.MetricContext != nil && fieldValueSelector.MetricContext.MetricName != "" {
 		sb.Where(sb.E("metric_name", fieldValueSelector.MetricContext.MetricName))
@@ -2310,14 +2313,14 @@ func (t *telemetryMetaStore) fetchMetricsTemporalityAndType(ctx context.Context,
 	})
 	adjustedStartTs, adjustedEndTs, tsTableName, _ := metricstelemetryschema.WhichTSTableToUse(queryTimeRangeStartTs, queryTimeRangeEndTs, false, nil)
 
-	temporalities, types, err := t.fetchTemporalityTypeForTable(ctx, tsTableName, adjustedStartTs, adjustedEndTs, metricNames)
+	temporalities, types, err := t.fetchTemporalityTypeForTable(ctx, orgID, tsTableName, adjustedStartTs, adjustedEndTs, metricNames)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	reduced := make(map[string]bool)
 	if reductionEnabled {
-		bufferTemporalities, bufferTypes, err := t.fetchTemporalityTypeForTable(ctx, metricstelemetryschema.TimeseriesV4BufferTableName, adjustedStartTs, adjustedEndTs, metricNames, "is_reduced = false")
+		bufferTemporalities, bufferTypes, err := t.fetchTemporalityTypeForTable(ctx, orgID, metricstelemetryschema.TimeseriesV4BufferTableName, adjustedStartTs, adjustedEndTs, metricNames, "is_reduced = false")
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -2330,7 +2333,7 @@ func (t *telemetryMetaStore) fetchMetricsTemporalityAndType(ctx context.Context,
 			}
 		}
 
-		reducedTemporalities, reducedTypes, err := t.fetchTemporalityTypeForTable(ctx, metricstelemetryschema.TimeseriesV4ReducedTableName, adjustedStartTs, adjustedEndTs, metricNames)
+		reducedTemporalities, reducedTypes, err := t.fetchTemporalityTypeForTable(ctx, orgID, metricstelemetryschema.TimeseriesV4ReducedTableName, adjustedStartTs, adjustedEndTs, metricNames)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -2378,13 +2381,16 @@ func resolveMetricType(metricType metrictypes.Type, isMonotonic bool, temporalit
 	return metricType
 }
 
-func (t *telemetryMetaStore) fetchTemporalityTypeForTable(ctx context.Context, tableName string, adjustedStartTs, adjustedEndTs uint64, metricNames []string, extraConds ...string) (map[string][]metrictypes.Temporality, map[string]metrictypes.Type, error) {
+func (t *telemetryMetaStore) fetchTemporalityTypeForTable(ctx context.Context, orgID valuer.UUID, tableName string, adjustedStartTs, adjustedEndTs uint64, metricNames []string, extraConds ...string) (map[string][]metrictypes.Temporality, map[string]metrictypes.Type, error) {
 	temporalities := make(map[string][]metrictypes.Temporality)
 	types := make(map[string]metrictypes.Type)
 
 	sb := sqlbuilder.NewSelectBuilder()
 	sb.Select("metric_name", "temporality", "any(type) AS type", "argMax(is_monotonic, unix_milli) as is_monotonic")
 	sb.From(t.metricsDBName + "." + tableName)
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attrs"); err != nil {
+		return nil, nil, err
+	}
 	conds := []string{
 		sb.In("metric_name", metricNames),
 		sb.GTE("unix_milli", adjustedStartTs),
@@ -2673,13 +2679,13 @@ func (t *telemetryMetaStore) GetFirstSeenFromMetricMetadata(ctx context.Context,
 }
 
 func (t *telemetryMetaStore) FetchLastSeenInfoMulti(ctx context.Context, orgID valuer.UUID, metricNames ...string) (map[string]int64, error) {
-	lastSeenInfo, err := t.fetchLastSeenInfoForTable(ctx, metricstelemetryschema.TimeseriesV4TableName, metricNames)
+	lastSeenInfo, err := t.fetchLastSeenInfoForTable(ctx, orgID, metricstelemetryschema.TimeseriesV4TableName, metricNames)
 	if err != nil {
 		return nil, err
 	}
 
 	if t.fl.BooleanOrEmpty(ctx, flagger.FeatureEnableMetricsReduction, featuretypes.NewFlaggerEvaluationContext(orgID)) {
-		reducedLastSeen, err := t.fetchLastSeenInfoForTable(ctx, metricstelemetryschema.TimeseriesV4ReducedTableName, metricNames)
+		reducedLastSeen, err := t.fetchLastSeenInfoForTable(ctx, orgID, metricstelemetryschema.TimeseriesV4ReducedTableName, metricNames)
 		if err != nil {
 			return nil, err
 		}
@@ -2693,12 +2699,15 @@ func (t *telemetryMetaStore) FetchLastSeenInfoMulti(ctx context.Context, orgID v
 	return lastSeenInfo, nil
 }
 
-func (t *telemetryMetaStore) fetchLastSeenInfoForTable(ctx context.Context, tableName string, metricNames []string) (map[string]int64, error) {
+func (t *telemetryMetaStore) fetchLastSeenInfoForTable(ctx context.Context, orgID valuer.UUID, tableName string, metricNames []string) (map[string]int64, error) {
 	sb := sqlbuilder.Select(
 		"metric_name",
 		"max(unix_milli)",
 	).
 		From(t.metricsDBName + "." + tableName)
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attrs"); err != nil {
+		return nil, err
+	}
 	sb.Where(sb.In("metric_name", metricNames))
 	sb.GroupBy("metric_name")
 
