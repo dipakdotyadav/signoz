@@ -117,16 +117,18 @@ func (m *module) AddMember(ctx context.Context, orgID, projectID valuer.UUID, me
 	verbs, err := projectMemberRelations(member.Role)
 	if err != nil { return err }
 	resource := coretypes.NewResourceMetaResource(coretypes.KindProject)
-	selector := coretypes.TypeMetaResource.MustSelector(projectID.String())
-	additions := make([]*openfgav1.TupleKey, 0, len(verbs))
+	object := resource.Object(orgID, projectID.String())
+	desired := make([]*openfgav1.TupleKey, 0, len(verbs))
 	for _, verb := range verbs {
-		additions = append(additions, &openfgav1.TupleKey{User: subject, Relation: verb.StringValue(), Object: resource.Object(orgID, selector.String())})
+		desired = append(desired, &openfgav1.TupleKey{User: subject, Relation: verb.StringValue(), Object: object})
 	}
-	// Replace any previous project role atomically from the authorization perspective.
-	deletions := make([]*openfgav1.TupleKey, 0)
+	existing := make([]*openfgav1.TupleKey, 0, 7)
 	for _, verb := range []coretypes.Verb{coretypes.VerbRead, coretypes.VerbUpdate, coretypes.VerbCreate, coretypes.VerbDelete, coretypes.VerbAttach, coretypes.VerbDetach, coretypes.VerbList} {
-		deletions = append(deletions, &openfgav1.TupleKey{User: subject, Relation: verb.StringValue(), Object: resource.Object(orgID, selector.String())})
+		tuples, err := m.authz.ReadTuples(ctx, &openfgav1.ReadRequestTupleKey{User: subject, Relation: verb.StringValue(), Object: object})
+		if err != nil { return err }
+		existing = append(existing, tuples...)
 	}
+	additions, deletions := authtypes.DiffTuples(existing, desired)
 	return m.authz.Write(ctx, additions, deletions)
 }
 
