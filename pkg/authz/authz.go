@@ -16,6 +16,8 @@ type AuthZ interface {
 
 	// CheckWithTupleCreation takes upon the responsibility for generating the tuples alongside everything Check does.
 	CheckWithTupleCreation(context.Context, authtypes.Claims, valuer.UUID, authtypes.Relation, coretypes.Resource, []coretypes.Selector, []coretypes.Selector) error
+	// CheckResource checks a principal against a concrete resource object and relation.
+	CheckResource(context.Context, authtypes.Claims, valuer.UUID, authtypes.Relation, coretypes.Resource, coretypes.Selector) error
 
 	// CheckWithTupleCreationWithoutClaims checks permissions for anonymous users.
 	CheckWithTupleCreationWithoutClaims(context.Context, valuer.UUID, authtypes.Relation, coretypes.Resource, []coretypes.Selector, []coretypes.Selector) error
