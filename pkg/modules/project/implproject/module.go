@@ -158,6 +158,7 @@ func (m *module) ListMembers(ctx context.Context, orgID, projectID valuer.UUID) 
 			if len(parts) == 0 { continue }
 			identity := parts[len(parts)-1]
 			principalType := strings.SplitN(tuple.GetUser(), ":", 2)[0]
+			if principalType != "user" && principalType != "serviceaccount" { continue }
 			key := principalType + ":" + identity
 			if roles[key] == nil { roles[key] = map[string]bool{} }
 			roles[key][verb.StringValue()] = true
