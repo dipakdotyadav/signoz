@@ -2,6 +2,7 @@ package implproject
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"unicode"
 
@@ -92,22 +93,109 @@ func projectMemberRelations(role string) ([]coretypes.Verb, error) {
 	}
 }
 
-func (m *module) memberSubject(ctx context.Context, orgID valuer.UUID, member *types.ProjectMember) (string, error) {
-	if member == nil || member.PrincipalID == "" {
-		return "", errors.New(errors.TypeInvalidInput, errors.CodeInvalidInput, "project member principalId is required")
+// projectMemberSubject validates the identity shape and scopes the subject to
+// the supplied organization. It deliberately does not look up the principal;
+// callers decide whether the principal must still exist.
+func projectMemberSubject(orgID valuer.UUID, member *types.ProjectMember) (string, valuer.UUID, error) {
+	if member == nil || strings.TrimSpace(member.PrincipalID) == "" {
+		return "", valuer.UUID{}, errors.New(errors.TypeInvalidInput, errors.CodeInvalidInput, "project member principalId is required")
 	}
-	id, err := valuer.NewUUID(member.PrincipalID)
-	if err != nil { return "", err }
+
+	id, err := valuer.NewUUID(strings.TrimSpace(member.PrincipalID))
+	if err != nil {
+		return "", valuer.UUID{}, err
+	}
+
+	var resource coretypes.Resource
 	switch member.PrincipalType {
 	case "user":
-		if _, err := m.users.GetUserByOrgIDAndID(ctx, orgID, id); err != nil { return "", err }
-		return authtypes.MustNewSubject(coretypes.NewResourceUser(), id.String(), orgID, nil), nil
+		resource = coretypes.NewResourceUser()
 	case "serviceaccount":
-		if _, err := m.serviceAccounts.Get(ctx, orgID, id); err != nil { return "", err }
-		return authtypes.MustNewSubject(coretypes.NewResourceServiceAccount(), id.String(), orgID, nil), nil
+		resource = coretypes.NewResourceServiceAccount()
 	default:
-		return "", errors.New(errors.TypeInvalidInput, errors.CodeInvalidInput, "principalType must be user or serviceaccount")
+		return "", valuer.UUID{}, errors.New(errors.TypeInvalidInput, errors.CodeInvalidInput, "principalType must be user or serviceaccount")
 	}
+
+	subject, err := authtypes.NewSubject(resource, id.String(), orgID, nil)
+	if err != nil {
+		return "", valuer.UUID{}, err
+	}
+	return subject, id, nil
+}
+
+func (m *module) memberSubject(ctx context.Context, orgID valuer.UUID, member *types.ProjectMember) (string, error) {
+	subject, id, err := projectMemberSubject(orgID, member)
+	if err != nil {
+		return "", err
+	}
+
+	switch member.PrincipalType {
+	case "user":
+		if _, err := m.users.GetUserByOrgIDAndID(ctx, orgID, id); err != nil {
+			return "", err
+		}
+	case "serviceaccount":
+		if _, err := m.serviceAccounts.Get(ctx, orgID, id); err != nil {
+			return "", err
+		}
+	}
+	return subject, nil
+}
+
+// projectMemberIdentity accepts only subjects belonging to this organization.
+// This prevents malformed or foreign-organization tuples from leaking into
+// the project-members API response.
+func projectMemberIdentity(orgID valuer.UUID, subject string) (string, string, bool) {
+	resources := []struct {
+		principalType string
+		resource      coretypes.Resource
+	}{
+		{principalType: "user", resource: coretypes.NewResourceUser()},
+		{principalType: "serviceaccount", resource: coretypes.NewResourceServiceAccount()},
+	}
+
+	for _, candidate := range resources {
+		prefix := candidate.resource.Prefix(orgID) + "/"
+		if !strings.HasPrefix(subject, prefix) {
+			continue
+		}
+		id := strings.TrimPrefix(subject, prefix)
+		if strings.Contains(id, "/") {
+			return "", "", false
+		}
+		parsed, err := valuer.NewUUID(id)
+		if err != nil {
+			return "", "", false
+		}
+		return candidate.principalType, parsed.String(), true
+	}
+	return "", "", false
+}
+
+func projectMemberRole(permissions map[string]bool) (string, error) {
+	roles := map[string][]coretypes.Verb{
+		"viewer": {coretypes.VerbRead},
+		"editor": {coretypes.VerbRead, coretypes.VerbUpdate},
+		"admin":  {coretypes.VerbRead, coretypes.VerbUpdate, coretypes.VerbCreate, coretypes.VerbDelete, coretypes.VerbAttach, coretypes.VerbDetach, coretypes.VerbList},
+	}
+
+	for role, verbs := range roles {
+		if len(permissions) != len(verbs) {
+			continue
+		}
+		matches := true
+		for _, verb := range verbs {
+			if !permissions[verb.StringValue()] {
+				matches = false
+				break
+			}
+		}
+		if matches {
+			return role, nil
+		}
+	}
+
+	return "", errors.New(errors.TypeInternal, errors.CodeInternal, "project membership contains an unsupported permission combination")
 }
 
 func (m *module) AddMember(ctx context.Context, orgID, projectID valuer.UUID, member *types.ProjectMember) error {
@@ -134,7 +222,7 @@ func (m *module) AddMember(ctx context.Context, orgID, projectID valuer.UUID, me
 
 func (m *module) RemoveMember(ctx context.Context, orgID, projectID valuer.UUID, member *types.ProjectMember) error {
 	if _, err := m.store.Get(ctx, orgID, projectID); err != nil { return err }
-	subject, err := m.memberSubject(ctx, orgID, member)
+	subject, _, err := projectMemberSubject(orgID, member)
 	if err != nil { return err }
 	resource := coretypes.NewResourceMetaResource(coretypes.KindProject)
 	selector := coretypes.TypeMetaResource.MustSelector(projectID.String())
@@ -154,22 +242,32 @@ func (m *module) ListMembers(ctx context.Context, orgID, projectID valuer.UUID) 
 		tuples, err := m.authz.ReadTuples(ctx, &openfgav1.ReadRequestTupleKey{Object: object, Relation: verb.StringValue()})
 		if err != nil { return nil, err }
 		for _, tuple := range tuples {
-			parts := strings.Split(tuple.GetUser(), "/")
-			if len(parts) == 0 { continue }
-			identity := parts[len(parts)-1]
-			principalType := strings.SplitN(tuple.GetUser(), ":", 2)[0]
-			if principalType != "user" && principalType != "serviceaccount" { continue }
+			principalType, identity, ok := projectMemberIdentity(orgID, tuple.GetUser())
+			if !ok {
+				continue
+			}
 			key := principalType + ":" + identity
-			if roles[key] == nil { roles[key] = map[string]bool{} }
+			if roles[key] == nil {
+				roles[key] = map[string]bool{}
+			}
 			roles[key][verb.StringValue()] = true
 		}
 	}
+
 	members := make([]*types.ProjectMember, 0, len(roles))
 	for key, permissions := range roles {
 		parts := strings.SplitN(key, ":", 2)
-		role := "viewer"
-		if permissions["create"] || permissions["delete"] || permissions["attach"] || permissions["detach"] || permissions["list"] { role = "admin" } else if permissions["update"] { role = "editor" }
+		role, err := projectMemberRole(permissions)
+		if err != nil {
+			return nil, err
+		}
 		members = append(members, &types.ProjectMember{PrincipalType: parts[0], PrincipalID: parts[1], Role: role})
 	}
+	sort.Slice(members, func(i, j int) bool {
+		if members[i].PrincipalType != members[j].PrincipalType {
+			return members[i].PrincipalType < members[j].PrincipalType
+		}
+		return members[i].PrincipalID < members[j].PrincipalID
+	})
 	return members, nil
 }
