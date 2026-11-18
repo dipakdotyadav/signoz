@@ -204,4 +204,6 @@ The metadata table uses `resource_attributes`; time-series catalogs use `resourc
 
 This closes an important discovery side channel: a project can no longer learn another project's metric attribute keys, values, or metric lifecycle information through these metadata APIs merely because both projects belong to the same organization.
 
-Trace and log metadata discovery remains a separate storage-schema task. Their current tag-key/value tables do not yet carry explicit tenant columns, so project filtering cannot safely be inferred from the tag key or value alone.
+Trace metadata discovery is now backed by tenant-keyed collector tables: `distributed_tag_attributes_v3` and `distributed_span_attributes_keys_v2`. The collector writes the authenticated organization/project IDs alongside each trace metadata value and key. Their ReplacingMergeTree sorting keys include both tenant dimensions, preventing identical keys or values from different projects from collapsing into one surviving row during merges. Migration 1020 creates these tables, copies existing rows from the prior metadata tables (legacy rows without trusted identity remain unscoped), and switches the writer and metadata reader to the tenant-keyed tables. Trace key and value discovery applies organization scope and, when present, project scope to both the key table and tag-value table.
+
+Log metadata discovery remains a separate storage-schema task. Its current tag-key/value tables do not yet carry explicit tenant columns, so project filtering cannot safely be inferred from the tag key or value alone.
