@@ -127,4 +127,11 @@ The API now has a reusable `ctxtypes.TenantScope` context value and two authoriz
 
 The header is a selector, not proof of identity. The middleware resolves the authenticated organization from claims and checks project access against the authorization service before creating the scope. Downstream code should use only `ctxtypes.TenantScopeFromContext`; it must not trust the raw header.
 
-Important: `ProjectHeaderAccess` is a building block and is not yet wired onto query routes. Do not advertise project-scoped query isolation until route activation, SQL enforcement for structured queries, PromQL, trace operators and raw ClickHouse SQL, and cross-project integration tests are complete. Raw ClickHouse SQL requires a dedicated policy (or restricted execution role); adding a resource predicate to builder queries does not secure arbitrary SQL.
+Implementation status on `feat/multi-tenancy-foundation`:
+
+- `ProjectHeaderAccessIfPresent` is wired to `/api/v5/query_range` and `/api/v5/query_range/preview` using `X-SigNoz-Project-ID`. The header is only a selector; middleware authorizes the project against the authenticated organization before attaching `TenantScope`.
+- Requests without the project header retain organization-wide behavior for backward compatibility with existing organization-level credentials.
+- The query layer injects mandatory organization and project predicates into structured trace, log, metric, and AI builder queries. Trace-operator expressions are validated against named operands, which are independently scoped; formulas consume the scoped query results.
+- Project-scoped requests using unsupported query languages fail closed. In particular, PromQL and arbitrary ClickHouse SQL are not yet project-scoped. Raw SQL requires a dedicated isolation policy or restricted execution role; string-appending a predicate is not a safe SQL isolation strategy.
+
+Do not advertise complete project-scoped query isolation yet. Remaining work includes a secure PromQL strategy, a restricted raw-SQL policy, coverage of every query/read path, and cross-project integration tests proving that project A cannot read project B data.
