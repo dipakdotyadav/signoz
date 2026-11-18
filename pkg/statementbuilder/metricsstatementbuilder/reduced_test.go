@@ -2,6 +2,8 @@ package metricsstatementbuilder
 
 import (
 	"context"
+	"strings"
+	"fmt"
 	"testing"
 	"time"
 
@@ -169,6 +171,22 @@ func TestReducedStatementBuilder(t *testing.T) {
 		require.Contains(t, got.Query, "signoz_metrics.time_series_v4_buffer")
 		require.Contains(t, got.Query, "is_reduced")
 		require.NotContains(t, got.Query, "UNION ALL")
+	})
+
+	t.Run("tenant_filter_applies_to_raw_and_reduced_catalogs", func(t *testing.T) {
+		q := reducedQuery("test.metric", metrictypes.GaugeType, metrictypes.Unspecified, metrictypes.TimeAggregationLatest, metrictypes.SpaceAggregationSum)
+		q.Filter = &qbtypes.Filter{Expression: "resource.signoz.org.id = '11111111-1111-4111-8111-111111111111' AND resource.signoz.project.id = '22222222-2222-4222-8222-222222222222'"}
+		got, err := sb.Build(context.Background(), valuer.UUID{}, start, end, qbtypes.RequestTypeTimeSeries, q, nil)
+		require.NoError(t, err)
+		require.Contains(t, got.Query, "signoz_metrics.time_series_v4_1day")
+		require.Contains(t, got.Query, "signoz_metrics.time_series_v4_reduced")
+		for _, field := range []string{"signoz.org.id", "signoz.project.id"} {
+			fragment := "JSONExtractString(labels, '" + field + "')"
+			require.GreaterOrEqual(t, strings.Count(got.Query, fragment), 2,
+				"tenant filter for %s must constrain both raw and reduced catalog rows", field)
+		}
+		require.GreaterOrEqual(t, strings.Count(fmt.Sprint(got.Args), "11111111-1111-4111-8111-111111111111"), 2)
+		require.GreaterOrEqual(t, strings.Count(fmt.Sprint(got.Args), "22222222-2222-4222-8222-222222222222"), 2)
 	})
 
 	t.Run("not_reduced", func(t *testing.T) {
