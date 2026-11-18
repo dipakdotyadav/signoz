@@ -172,3 +172,28 @@ func TestAddTraceMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
 	sb := sqlbuilder.Select("*").From("signoz_traces.span_attributes_keys")
 	require.Error(t, addTraceMetadataTenantScope(ctx, orgID, sb))
 }
+
+
+func TestLogMetadataDiscoveryFailsClosedForOrganizationScopedRequests(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	metadata := NewTelemetryMetaStore(
+		instrumentationtest.New().ToProviderSettings(),
+		nil,
+		flaggertest.New(t),
+	).(*telemetryMetaStore)
+
+	keys, complete, err := metadata.getLogsKeys(context.Background(), orgID, []*telemetrytypes.FieldKeySelector{{
+		Name: "service.name", Signal: telemetrytypes.SignalLogs,
+	}})
+	require.NoError(t, err)
+	require.True(t, complete)
+	require.Empty(t, keys)
+
+	values, valuesComplete, err := metadata.getLogFieldValues(context.Background(), orgID, &telemetrytypes.FieldValueSelector{
+		Name: "service.name", Signal: telemetrytypes.SignalLogs,
+	})
+	require.NoError(t, err)
+	require.True(t, valuesComplete)
+	require.Empty(t, values.StringValues)
+	require.Empty(t, values.NumberValues)
+}
