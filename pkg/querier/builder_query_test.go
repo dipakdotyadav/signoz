@@ -312,3 +312,27 @@ func TestMakeBucketsOrder(t *testing.T) {
 	expectedStartNS := querybuilder.ToNanoSecs(startMS)
 	assert.Equal(t, expectedStartNS, buckets[len(buckets)-1].fromNS)
 }
+
+func TestBuilderQueryFingerprintSeparatesTenantScopes(t *testing.T) {
+	base := qbtypes.QueryBuilderQuery[qbtypes.MetricAggregation]{
+		Signal: telemetrytypes.SignalMetrics,
+		Filter: &qbtypes.Filter{Expression: "resource.signoz.org.id = '11111111-1111-4111-8111-111111111111' AND resource.signoz.project.id = '22222222-2222-4222-8222-222222222222'"},
+	}
+	otherProject := base
+	otherProject.Filter = &qbtypes.Filter{Expression: "resource.signoz.org.id = '11111111-1111-4111-8111-111111111111' AND resource.signoz.project.id = '33333333-3333-4333-8333-333333333333'"}
+
+	first := (&builderQuery[qbtypes.MetricAggregation]{
+		queryType: qbtypes.QueryTypeBuilder,
+		kind: qbtypes.RequestTypeTimeSeries,
+		spec: base,
+	}).Fingerprint()
+	second := (&builderQuery[qbtypes.MetricAggregation]{
+		queryType: qbtypes.QueryTypeBuilder,
+		kind: qbtypes.RequestTypeTimeSeries,
+		spec: otherProject,
+	}).Fingerprint()
+
+	assert.NotEqual(t, first, second, "different project scopes must never share a query cache fingerprint")
+	assert.Contains(t, first, "22222222-2222-4222-8222-222222222222")
+	assert.Contains(t, second, "33333333-3333-4333-8333-333333333333")
+}
