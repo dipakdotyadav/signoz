@@ -4,9 +4,9 @@
 
 Accepted design for the multi-tenancy implementation. This document records the ingestion boundary before introducing project credentials and changing telemetry storage.
 
-## Scope: Community Edition only
+## Scope: self-hosted and cloud-compatible deployments
 
-This implementation targets the self-hosted SigNoz Community Edition. Cloud gateway behavior, Cloud-specific ingestion keys, hosted control planes, and Cloud deployment compatibility are explicitly out of scope.
+The product target includes both self-hosted/on-premises and cloud deployments, with hybrid isolation: organization boundaries are mandatory and project boundaries apply within an organization. This implementation establishes the self-hosted API/collector contract first. Cloud gateway deployments must integrate with the same credential-resolution and trusted-identity contract; existing Cloud gateway credentials and hosted control-plane behavior must not be silently replaced or bypassed.
 
 The current Community Edition API keys authenticate service accounts. The service-account identity resolves to an organization and does not identify a project. Attaching a client-supplied `project_id` attribute is not a trusted isolation boundary.
 
@@ -87,6 +87,32 @@ The routes reuse the existing project authorization middleware. Project ID and o
 
 Credential rotation is intentionally not exposed as a non-atomic revoke-then-create operation. It should be added with a transactional store operation so a failed rotation cannot unexpectedly leave the project without a valid credential or two active credentials.
 
+## Collector authentication contract
+
+The companion collector implementation is being developed in [dipakdotyadav/signoz-otel-collector](https://github.com/dipakdotyadav/signoz-otel-collector/tree/feat/project-ingestion-key-auth).
+
+- OTLP clients send `signoz-ingestion-key` as an HTTP header or gRPC metadata value.
+- The collector calls `POST /api/v2/internal/ingestion-keys/resolve` with JSON `{"ingestionKey":"..."}` and the `X-SigNoz-Internal-Token` service header.
+- The API validates the key hash, expiry, revocation state, and active project, then returns only canonical `orgId` and `projectId` in the standard SigNoz success envelope.
+- Configure the same high-entropy `SIGNOZ_INTERNAL_INGESTION_RESOLVER_TOKEN` on the API and collector. The collector resolver endpoint must use HTTPS in production. The endpoint fails closed when the token is missing or invalid.
+- The collector authenticator does not cache successful resolutions in this first version, so revocation is observed on the next request.
+- The `signoztenantcontext` processor copies trusted identity to `signoz.org.id` and `signoz.project.id`, overwriting spoofed resource attributes. Multi-tenant pipelines must place it after OTLP authentication and before processors/connectors/exporters that derive or persist tenant data.
+
+Do not enable the authenticator on existing OTLP listeners until the collector image has been built from the companion branch and both API and collector have the resolver token configured. This preserves the existing single-tenant/organization-key behavior during rollout.
+
 ## Implementation status
 
-The current code adds the model, migration, module, store, HTTP handler, dependency injection, and routes. It is not yet a complete telemetry-isolation implementation. In particular, the credential resolver is not yet wired into the OTLP receiver, and project identity is not yet persisted/enforced in telemetry queries. Build and integration verification remain required before deployment.
+Implemented foundations:
+- Project-scoped key model, hash verification, SQL migration, store, management APIs, and project authorization.
+- Private API resolver endpoint protected by a constant-time checked service token.
+- Collector server authenticator and trusted tenant-context processor for traces, metrics, and logs.
+- Collector component registration and focused unit tests.
+
+Still outstanding before production:
+- Wire the authenticator and tenant-context processor into an explicit multi-tenant collector configuration and deployment image.
+- Run Go formatting, unit tests, and collector/API builds in CI; repository writes through GitHub have not themselves verified compilation.
+- Persist tenant identifiers as first-class ClickHouse dimensions and enforce organization/project predicates on every read, aggregation, alert, export, and derived-signal path.
+- Complete cross-project negative integration tests, revocation tests, and compatibility tests for existing ingestion keys.
+- Integrate the cloud gateway path against the same trusted-identity contract.
+
+The current code is an ingestion-authentication foundation, not yet a complete telemetry-isolation implementation.
