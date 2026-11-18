@@ -923,7 +923,7 @@ func getPriorityForContext(ctx telemetrytypes.FieldContext) int {
 }
 
 // getMetricsKeys returns the keys from the metrics that match the field selection criteria.
-func (t *telemetryMetaStore) getMetricsKeys(ctx context.Context, fieldKeySelectors []*telemetrytypes.FieldKeySelector) ([]*telemetrytypes.TelemetryFieldKey, bool, error) {
+func (t *telemetryMetaStore) getMetricsKeys(ctx context.Context, orgID valuer.UUID, fieldKeySelectors []*telemetrytypes.FieldKeySelector) ([]*telemetrytypes.TelemetryFieldKey, bool, error) {
 	ctx = ctxtypes.NewContextWithCommentVals(ctx, map[string]string{
 		instrumentationtypes.TelemetrySignal:  telemetrytypes.SignalMetrics.StringValue(),
 		instrumentationtypes.CodeNamespace:    "metadata",
@@ -942,6 +942,10 @@ func (t *telemetryMetaStore) getMetricsKeys(ctx context.Context, fieldKeySelecto
 				ELSE 4
 			END as priority`).
 		From(t.metricsDBName + "." + t.metricsFieldsTblName)
+
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb); err != nil {
+		return nil, false, err
+	}
 
 	var limit int
 
@@ -1226,7 +1230,7 @@ func (t *telemetryMetaStore) GetKeys(ctx context.Context, orgID valuer.UUID, fie
 		if fieldKeySelector.Source == telemetrytypes.SourceMeter {
 			keys, complete, err = t.getMeterSourceMetricKeys(ctx, selectors)
 		} else {
-			keys, complete, err = t.getMetricsKeys(ctx, selectors)
+			keys, complete, err = t.getMetricsKeys(ctx, orgID, selectors)
 		}
 	case telemetrytypes.SignalUnspecified:
 		// get traces keys
@@ -1307,7 +1311,7 @@ func (t *telemetryMetaStore) GetKeysMulti(ctx context.Context, orgID valuer.UUID
 	if err != nil {
 		return nil, false, err
 	}
-	metricsKeys, metricsComplete, err := t.getMetricsKeys(ctx, metricsSelectors)
+	metricsKeys, metricsComplete, err := t.getMetricsKeys(ctx, orgID, metricsSelectors)
 	if err != nil {
 		return nil, false, err
 	}
@@ -1823,6 +1827,10 @@ func (t *telemetryMetaStore) getMetricFieldValues(ctx context.Context, orgID val
 	sb := sqlbuilder.
 		Select("DISTINCT attr_string_value").
 		From(t.metricsDBName + "." + t.metricsFieldsTblName)
+
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb); err != nil {
+		return nil, false, err
+	}
 
 	if fieldValueSelector.Name != "" {
 		if names := t.familyValueNames(ctx, orgID, telemetrytypes.SignalMetrics, fieldValueSelector); len(names) > 1 {
