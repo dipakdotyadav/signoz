@@ -135,3 +135,16 @@ Implementation status on `feat/multi-tenancy-foundation`:
 - Project-scoped requests using unsupported query languages fail closed. In particular, PromQL and arbitrary ClickHouse SQL are not yet project-scoped. Raw SQL requires a dedicated isolation policy or restricted execution role; string-appending a predicate is not a safe SQL isolation strategy.
 
 Do not advertise complete project-scoped query isolation yet. Remaining work includes a secure PromQL strategy, a restricted raw-SQL policy, coverage of every query/read path, and cross-project integration tests proving that project A cannot read project B data.
+
+## Query-scope regression coverage
+
+The query-scope unit suite now covers:
+- Mandatory organization and project predicates for traces, logs, metrics, and AI trace builder queries.
+- Preservation of an existing user filter while adding the mandatory tenant predicates.
+- Fail-closed behavior for PromQL and arbitrary ClickHouse SQL.
+- Organization mismatch and malformed project UUID rejection.
+- Legacy organization-wide requests without a project scope remaining unchanged.
+- Nil query request rejection.
+- Trace-operator queries whose named operands are independently tenant-scoped, and rejection of missing operands.
+
+These are unit-level request-transformation tests. They do not replace end-to-end tests against ClickHouse proving that two projects cannot read one another's persisted telemetry. They also do not validate that every API route which reaches the querier has the intended authorization middleware.
