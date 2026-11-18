@@ -1453,6 +1453,9 @@ func (t *telemetryMetaStore) getRelatedValues(ctx context.Context, orgID valuer.
 	}
 
 	sb := sqlbuilder.Select("DISTINCT " + selectColumn).From(t.relatedMetadataDBName + "." + t.relatedMetadataTblName)
+	if err := addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"); err != nil {
+		return nil, false, err
+	}
 
 	if len(fieldValueSelector.ExistingQuery) != 0 {
 		keySelectors := querybuilder.QueryStringToKeysSelectors(fieldValueSelector.ExistingQuery)
