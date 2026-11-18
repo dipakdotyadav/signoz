@@ -56,7 +56,8 @@ func (s *store) Update(ctx context.Context, orgID valuer.UUID, project *types.Pr
 }
 
 func (s *store) Delete(ctx context.Context, orgID, id valuer.UUID) error {
-	result, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model((*types.Project)(nil)).
+	project := new(types.Project)
+	result, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model(project).
 		Set("status = ?", types.ProjectStatusArchived).
 		Set("updated_at = ?", time.Now()).
 		Where("org_id = ?", orgID).Where("id = ?", id).Exec(ctx)
