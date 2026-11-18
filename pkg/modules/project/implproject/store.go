@@ -2,7 +2,6 @@ package implproject
 
 import (
 	"context"
-	"time"
 
 	"github.com/SigNoz/signoz/pkg/sqlstore"
 	"github.com/SigNoz/signoz/pkg/types"
@@ -52,9 +51,9 @@ func (s *store) Update(ctx context.Context, orgID valuer.UUID, project *types.Pr
 }
 
 func (s *store) Delete(ctx context.Context, orgID, id valuer.UUID) error {
-	_, err := s.sqlstore.BunDBCtx(ctx).NewDelete().Model((*types.Project)(nil)).
+	_, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model((*types.Project)(nil)).
+		Set("status = ?", types.ProjectStatusArchived).
+		Set("updated_at = ?", time.Now()).
 		Where("org_id = ?", orgID).Where("id = ?", id).Exec(ctx)
 	return err
 }
-
-var _ = time.Now
