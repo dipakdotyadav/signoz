@@ -18,6 +18,14 @@ const (
 
 var ManagedRoleToTransactions = map[string][]Transaction{
 	SigNozAdminRoleName: {
+		// project resource — organization administrators manage project lifecycle and memberships
+		{Verb: VerbCreate, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbList, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbRead, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbUpdate, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbDelete, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbAttach, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
+		{Verb: VerbDetach, Object: *MustNewObject(ResourceRef{Type: TypeMetaResource, Kind: KindProject}, WildCardSelectorString)},
 		// role attach/detach — admin can attach/detach role assignments
 		{Verb: VerbAttach, Object: *MustNewObject(ResourceRef{Type: TypeRole, Kind: KindRole}, WildCardSelectorString)},
 		{Verb: VerbDetach, Object: *MustNewObject(ResourceRef{Type: TypeRole, Kind: KindRole}, WildCardSelectorString)},
