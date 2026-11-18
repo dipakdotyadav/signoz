@@ -59,6 +59,10 @@ func (provider *provider) BatchCheck(ctx context.Context, tupleReq map[string]*o
 	return provider.server.BatchCheck(ctx, tupleReq)
 }
 
+func (provider *provider) CheckResource(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, relation authtypes.Relation, resource coretypes.Resource, selector coretypes.Selector) error {
+	return provider.server.CheckResource(ctx, claims, orgID, relation, resource, selector)
+}
+
 func (provider *provider) CheckWithTupleCreation(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, relation authtypes.Relation, typeable coretypes.Resource, selectors []coretypes.Selector, roleSelectors []coretypes.Selector) error {
 	return provider.server.CheckWithTupleCreation(ctx, claims, orgID, relation, typeable, selectors, roleSelectors)
 }
