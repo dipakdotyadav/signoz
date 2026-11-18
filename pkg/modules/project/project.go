@@ -14,6 +14,9 @@ type Module interface {
 	List(context.Context, valuer.UUID) ([]*types.Project, error)
 	Update(context.Context, valuer.UUID, *types.Project) error
 	Delete(context.Context, valuer.UUID, valuer.UUID) error
+	AddMember(context.Context, valuer.UUID, valuer.UUID, *types.ProjectMember) error
+	RemoveMember(context.Context, valuer.UUID, valuer.UUID, *types.ProjectMember) error
+	ListMembers(context.Context, valuer.UUID, valuer.UUID) ([]*types.ProjectMember, error)
 }
 
 type Handler interface {
@@ -22,4 +25,7 @@ type Handler interface {
 	List(http.ResponseWriter, *http.Request)
 	Update(http.ResponseWriter, *http.Request)
 	Delete(http.ResponseWriter, *http.Request)
+	AddMember(http.ResponseWriter, *http.Request)
+	RemoveMember(http.ResponseWriter, *http.Request)
+	ListMembers(http.ResponseWriter, *http.Request)
 }
