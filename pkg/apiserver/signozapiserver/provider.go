@@ -398,6 +398,10 @@ func (provider *provider) AddToRouter(router *mux.Router) error {
 		return err
 	}
 
+	if err := provider.addProjectRoutes(router); err != nil {
+		return err
+	}
+
 	if err := provider.addSessionRoutes(router); err != nil {
 		return err
 	}
