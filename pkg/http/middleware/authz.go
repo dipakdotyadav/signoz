@@ -160,6 +160,29 @@ func (middleware *AuthZ) OpenAccess(next http.HandlerFunc) http.HandlerFunc {
 // CheckResources authorizes every resolved resource for the route. roles are the
 // allowed role names (the OSS role-gate); the resource selectors drive the EE check.
 // ProjectAccess authorizes access to a project using direct project relationships and organization role inheritance.
+// authorizeProjectAccess checks a direct project grant first, then falls back to
+// the same verb on the owning organization. Only an authorization denial may
+// trigger the fallback; service errors fail closed.
+func authorizeProjectAccess(orgID, projectID valuer.UUID, verb coretypes.Verb, check func(coretypes.Resource, coretypes.Selector) error) error {
+	projectResource := coretypes.NewResourceMetaResource(coretypes.KindProject)
+	projectSelector, err := projectResource.Type().Selector(projectID.String())
+	if err != nil {
+		return err
+	}
+
+	err = check(projectResource, projectSelector)
+	if err == nil || !errors.Asc(err, authtypes.ErrCodeAuthZForbidden) {
+		return err
+	}
+
+	orgResource := coretypes.NewResourceOrganization()
+	orgSelector, err := orgResource.Type().Selector(orgID.String())
+	if err != nil {
+		return err
+	}
+	return check(orgResource, orgSelector)
+}
+
 func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Verb) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
@@ -181,34 +204,12 @@ func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Ver
 			return
 		}
 
-		projectResource := coretypes.NewResourceMetaResource(coretypes.KindProject)
-		projectSelector, err := projectResource.Type().Selector(projectID.String())
+		err = authorizeProjectAccess(orgID, projectID, verb, func(resource coretypes.Resource, selector coretypes.Selector) error {
+			return middleware.authzService.CheckResource(ctx, claims, orgID, authtypes.Relation{Verb: verb}, resource, selector)
+		})
 		if err != nil {
 			render.Error(rw, err)
 			return
-		}
-
-		// First honor an explicit project grant. Organization permissions are
-		// evaluated only when the project check is forbidden; infrastructure or
-		// OpenFGA failures must never be converted into an organization fallback.
-		err = middleware.authzService.CheckResource(ctx, claims, orgID, authtypes.Relation{Verb: verb}, projectResource, projectSelector)
-		if err != nil {
-			if !errors.Asc(err, authtypes.ErrCodeAuthZForbidden) {
-				render.Error(rw, err)
-				return
-			}
-
-			orgResource := coretypes.NewResourceOrganization()
-			orgSelector, selectorErr := orgResource.Type().Selector(orgID.String())
-			if selectorErr != nil {
-				render.Error(rw, selectorErr)
-				return
-			}
-
-			if orgErr := middleware.authzService.CheckResource(ctx, claims, orgID, authtypes.Relation{Verb: verb}, orgResource, orgSelector); orgErr != nil {
-				render.Error(rw, err)
-				return
-			}
 		}
 
 		next(rw, req)
