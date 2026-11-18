@@ -12,6 +12,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/organization"
 	"github.com/SigNoz/signoz/pkg/types"
 	"github.com/SigNoz/signoz/pkg/types/authtypes"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/coretypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
 	"github.com/gorilla/mux"
@@ -218,7 +219,12 @@ func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Ver
 			return
 		}
 
-		next(rw, req)
+		// The scope is created only after the project permission check succeeds.
+		// Never accept tenant identifiers from request headers or telemetry data.
+		scopedCtx := ctxtypes.NewContextWithTenantScope(ctx, ctxtypes.TenantScope{
+			OrgID: orgID.String(), ProjectID: projectID.String(),
+		})
+		next(rw, req.WithContext(scopedCtx))
 	})
 }
 
