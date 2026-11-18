@@ -148,3 +148,11 @@ The query-scope unit suite now covers:
 - Trace-operator queries whose named operands are independently tenant-scoped, and rejection of missing operands.
 
 These are unit-level request-transformation tests. They do not replace end-to-end tests against ClickHouse proving that two projects cannot read one another's persisted telemetry. They also do not validate that every API route which reaches the querier has the intended authorization middleware.
+
+### Collector spoofing regression coverage
+
+The companion collector's `signoztenantcontextprocessor` test suite explicitly verifies that authenticated identity overwrites canonical tenant attributes and removes client-supplied aliases:
+- `org_id`, `project_id`, and `organization_id`
+- `signoz-ingestion-key` and `SIGNOZ-API-KEY`
+
+The test change is committed in [signoz-otel-collector commit 936c1d6](https://github.com/dipakdotyadav/signoz-otel-collector/commit/936c1d6f8f48ece89cd71ea9edbb16e49715b384). This is regression-test coverage only; the collector/API build and test workflow has not yet reported a CI run for that commit.
