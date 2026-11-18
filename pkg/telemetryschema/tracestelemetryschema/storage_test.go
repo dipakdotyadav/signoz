@@ -438,3 +438,17 @@ func TestColumnExpressionForScopeDeclaredPath(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantResourceKeysResolveToStoredResourceAttributes(t *testing.T) {
+	ctx := context.Background()
+	release := time.Date(2024, 6, 2, 0, 0, 0, 0, time.UTC)
+	key := telemetrytypes.NewTelemetryFieldKey("signoz.org.id", telemetrytypes.FieldContextResource, telemetrytypes.FieldDataTypeString)
+	key.Evolutions = MockEvolutionData(release)
+	read, err := NewStorage(nil).Read(ctx, qbtypes.QueryInfo{
+		StartNs: uint64(time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC).UnixNano()),
+		EndNs:   uint64(time.Date(2024, 6, 5, 0, 0, 0, 0, time.UTC).UnixNano()),
+	}, key)
+	require.NoError(t, err)
+	assert.Contains(t, read.SQL, "resource.`signoz.org.id`::String")
+	assert.Contains(t, read.SQL, "resources_string['signoz.org.id']")
+}

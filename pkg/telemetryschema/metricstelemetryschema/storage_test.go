@@ -218,3 +218,10 @@ func TestGetFieldKeyName(t *testing.T) {
 		})
 	}
 }
+
+func TestTenantResourceKeysResolveToStoredResourceAttributes(t *testing.T) {
+	key := telemetrytypes.NewTelemetryFieldKey("signoz.org.id", telemetrytypes.FieldContextResource, telemetrytypes.FieldDataTypeString)
+	read, err := NewStorage().Read(context.Background(), qbtypes.QueryInfo{}, key)
+	require.NoError(t, err)
+	assert.Equal(t, "JSONExtractString(labels, 'signoz.org.id')", read.SQL)
+}
