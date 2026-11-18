@@ -169,3 +169,11 @@ These route groups now use `AuthZ.RejectProjectHeaderForLegacyQuery` after the e
 The guard is applied to legacy v1 Prometheus query and dashboard-variable APIs; v3 query-range, autocomplete, filter suggestions and live-tail; v4 query-range and metric metadata; plus legacy service summaries, trace detail, dependency graph, error exploration, trace fields and span-percentile routes. The EE v4 query-range override is guarded as well.
 
 This is an explicit compatibility boundary, not full project support for legacy APIs. Remaining telemetry-returning legacy endpoints (for example service summaries, trace detail, dependency graphs, error exploration, and specialized integrations) still require route-by-route classification and either tenant-aware implementation or the same fail-closed guard before project-scoped access is advertised.
+
+## V5 query bucket-cache isolation
+
+The V5 bucket cache is namespaced by organization in the cache backend. Project-scoped query execution now adds the authenticated project ID to each bucket key as a second, explicit isolation dimension. Organization-wide requests retain an organization-level key, and project entries cannot collide with those keys. The cache-key namespace version is bumped from v6 to v7 so pre-change entries are not reused.
+
+Both cache reads and writes derive the key from request context. The project identifier comes only from the server-authenticated `TenantScope`; an organization mismatch is marked as an invalid scoped key rather than falling back to the organization-wide key. Query request validation remains responsible for rejecting the mismatch before execution.
+
+Regression coverage verifies distinct keys for two projects in the same organization, separation from organization-wide keys, invalid-scope non-fallback, and end-to-end bucket-cache reads/writes across two projects with identical query fingerprints.
