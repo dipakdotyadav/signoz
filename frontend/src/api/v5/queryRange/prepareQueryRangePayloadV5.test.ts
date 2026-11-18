@@ -21,7 +21,9 @@ import { DataSource, ReduceOperators } from 'types/common/queryBuilder';
 
 import {
 	convertBuilderQueriesToV5,
+	createAggregation,
 	mapPanelTypeToRequestType,
+	parseAggregations,
 	prepareQueryRangePayloadV5,
 } from './prepareQueryRangePayloadV5';
 
@@ -979,5 +981,59 @@ describe('convertBuilderQueriesToV5 builder query type', () => {
 		['an explicitly generic query', 'builder_query'],
 	])('sends builder_query for %s', (_label, builderQueryType) => {
 		expect(buildEnvelope(builderQueryType, 'trace').type).toBe('builder_query');
+	});
+});
+
+describe('parseAggregations', () => {
+	it.each([
+		['duration_nano', [{ expression: 'duration_nano' }]],
+		['attribute.queue_depth', [{ expression: 'attribute.queue_depth' }]],
+		['attribute.queue-depth', [{ expression: 'attribute.queue-depth' }]],
+		['body.latency as lat', [{ expression: 'body.latency', alias: 'lat' }]],
+		[
+			"count() as 'total' avg(code.lineno)",
+			[
+				{ expression: 'count()', alias: 'total' },
+				{ expression: 'avg(code.lineno)' },
+			],
+		],
+		// Words beside a call are not aggregations of their own.
+		['count() AS total', [{ expression: 'count()' }]],
+		['p99(duration_nano) by service', [{ expression: 'p99(duration_nano)' }]],
+		['sum(a', []],
+	])('parses %s', (input, expected) => {
+		expect(parseAggregations(input, undefined, true)).toStrictEqual(expected);
+	});
+
+	it('leaves a bare field out unless asked to read one', () => {
+		expect(parseAggregations('duration_nano')).toStrictEqual([]);
+	});
+});
+
+describe('createAggregation fallback', () => {
+	const logsQuery = (expression: string): Partial<IBuilderQuery> => ({
+		dataSource: DataSource.LOGS,
+		aggregations: [{ expression }],
+	});
+
+	it('sends no aggregation for a heatmap with no field', () => {
+		expect(createAggregation(logsQuery(''), PANEL_TYPES.HEATMAP)).toStrictEqual(
+			[],
+		);
+	});
+
+	it('reads a bare field on a heatmap and turns it into count() elsewhere', () => {
+		expect(
+			createAggregation(logsQuery('duration_nano'), PANEL_TYPES.HEATMAP),
+		).toStrictEqual([{ expression: 'duration_nano' }]);
+		expect(
+			createAggregation(logsQuery('duration_nano'), PANEL_TYPES.TIME_SERIES),
+		).toStrictEqual([{ expression: 'count()' }]);
+	});
+
+	it('still defaults other panels to count()', () => {
+		expect(
+			createAggregation(logsQuery(''), PANEL_TYPES.TIME_SERIES),
+		).toStrictEqual([{ expression: 'count()' }]);
 	});
 });

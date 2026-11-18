@@ -28,6 +28,7 @@ import { useQueryBuilder } from 'hooks/queryBuilder/useQueryBuilder';
 import { getMetricsOperatorsByAttributeType } from 'lib/newQueryBuilder/getMetricsOperatorsByAttributeType';
 import { getOperatorsBySourceAndPanelType } from 'lib/newQueryBuilder/getOperatorsBySourceAndPanelType';
 import { findDataTypeOfOperator } from 'lib/query/findDataTypeOfOperator';
+import { withHeatmapField } from 'lib/query/heatmapField';
 import { isEmpty, isEqual } from 'lodash-es';
 import { BaseAutocompleteData } from 'types/api/queryBuilder/queryAutocompleteResponse';
 import {
@@ -475,7 +476,12 @@ export const useQueryOperations: UseQueryOperations = ({
 			newQueryData = newQueryData ? newQueryData : newQuery;
 
 			setOperators(newOperators);
-			handleSetQueryData(index, newQueryData);
+			handleSetQueryData(
+				index,
+				panelType === PANEL_TYPES.HEATMAP
+					? withHeatmapField(newQueryData)
+					: newQueryData,
+			);
 		},
 		[
 			isRawQuery,

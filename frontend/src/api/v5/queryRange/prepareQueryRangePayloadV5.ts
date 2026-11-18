@@ -4,6 +4,7 @@ import { convertFiltersToExpression } from 'components/QueryBuilderV2/utils';
 import { PANEL_TYPES } from 'constants/queryBuilder';
 import { GetQueryResultsProps } from 'lib/dashboard/getQueryResults';
 import getStartEndRangeTime from 'lib/getStartEndRangeTime';
+import { HEATMAP_FIELD } from 'lib/query/heatmapFieldPattern';
 import { mapQueryDataToApi } from 'lib/newQueryBuilder/queryBuilderMappers/mapQueryDataToApi';
 import { isEmpty } from 'lodash-es';
 import { DynamicVariableSuggestion } from 'providers/Dashboard/store/dynamicVariableSuggestions';
@@ -241,13 +242,18 @@ function createBaseSpec(
 export function parseAggregations(
 	expression: string,
 	availableAlias?: string,
+	allowBareField = false,
 ): { expression: string; alias?: string }[] {
 	const result: { expression: string; alias?: string }[] = [];
 	// Matches function calls like "count()" or "sum(field)" with optional alias like "as 'alias'"
 	// Handles quoted ('alias'), dash-separated (field-name), and unquoted values after "as" keyword
 	const regex =
 		/([a-zA-Z0-9_]+\([^)]*\))(?:\s*as\s+((?:'[^']*'|"[^"]*"|[a-zA-Z0-9_-]+)))?/g;
-	let match = regex.exec(expression);
+	// With no call at all, the whole expression may be the bare field a logs/traces
+	// heatmap buckets, e.g. "duration_nano"
+	let match =
+		regex.exec(expression) ??
+		(allowBareField ? HEATMAP_FIELD.exec(expression) : null);
 	while (match !== null) {
 		const expr = match[1];
 		let alias = match[2] || availableAlias; // Use provided alias or availableAlias if not matched
@@ -301,18 +307,25 @@ export function createAggregation(
 		];
 	}
 
+	// A heatmap buckets the field the user names; count() would be rejected as one.
+	// Elsewhere a bare field is not an aggregation, so it falls back to count().
+	const isHeatmap = panelType === PANEL_TYPES.HEATMAP;
+	const fallback = isHeatmap ? [] : [{ expression: 'count()' }];
+
 	if (queryData.aggregations?.length > 0) {
 		return queryData.aggregations.flatMap(
 			(agg: { expression: string; alias?: string }) => {
-				const parsedAggregations = parseAggregations(agg.expression, agg?.alias);
-				return isEmpty(parsedAggregations)
-					? [{ expression: 'count()' }]
-					: parsedAggregations;
+				const parsedAggregations = parseAggregations(
+					agg.expression,
+					agg?.alias,
+					isHeatmap,
+				);
+				return isEmpty(parsedAggregations) ? fallback : parsedAggregations;
 			},
 		);
 	}
 
-	return [{ expression: 'count()' }];
+	return fallback;
 }
 
 /**

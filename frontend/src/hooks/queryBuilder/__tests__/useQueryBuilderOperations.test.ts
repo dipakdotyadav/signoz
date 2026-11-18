@@ -433,4 +433,29 @@ describe('useQueryBuilderOperations - Empty Aggregate Attribute Type', () => {
 			);
 		});
 	});
+
+	describe('handleChangeDataSource', () => {
+		it.each([
+			['heatmap', ''],
+			['time_series', 'count() '],
+		])(
+			'seeds the traces aggregation on a %s panel with %j',
+			(panelType, expression) => {
+				setupMockQueryBuilder(panelType);
+
+				const result = renderHookWithProps({ entityVersion: ENTITY_VERSION_V5 });
+				act(() => {
+					result.current.handleChangeDataSource(DataSource.TRACES);
+				});
+
+				expect(mockHandleSetQueryData).toHaveBeenLastCalledWith(
+					0,
+					expect.objectContaining({
+						dataSource: DataSource.TRACES,
+						aggregations: [{ expression }],
+					}),
+				);
+			},
+		);
+	});
 });

@@ -165,7 +165,9 @@ export function handleQueryChange(
 				newPanelType,
 			),
 			queryTraceOperator:
-				newPanelType === PANEL_TYPES.LIST || newPanelType === PANEL_TYPES.SCATTER
+				newPanelType === PANEL_TYPES.LIST ||
+				newPanelType === PANEL_TYPES.SCATTER ||
+				newPanelType === PANEL_TYPES.HEATMAP
 					? []
 					: supersetQuery.builder.queryTraceOperator,
 		},
