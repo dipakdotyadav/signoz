@@ -163,14 +163,14 @@ func (middleware *AuthZ) OpenAccess(next http.HandlerFunc) http.HandlerFunc {
 // authorizeProjectAccess checks a direct project grant first, then falls back to
 // the same verb on the owning organization. Only an authorization denial may
 // trigger the fallback; service errors fail closed.
-func authorizeProjectAccess(orgID, projectID valuer.UUID, verb coretypes.Verb, check func(coretypes.Resource, coretypes.Selector) error) error {
+func authorizeProjectAccess(orgID, projectID valuer.UUID, verb coretypes.Verb, check func(coretypes.Resource, coretypes.Selector, coretypes.Verb) error) error {
 	projectResource := coretypes.NewResourceMetaResource(coretypes.KindProject)
 	projectSelector, err := projectResource.Type().Selector(projectID.String())
 	if err != nil {
 		return err
 	}
 
-	err = check(projectResource, projectSelector)
+	err = check(projectResource, projectSelector, verb)
 	if err == nil || !errors.Asc(err, authtypes.ErrCodeAuthZForbidden) {
 		return err
 	}
@@ -180,7 +180,13 @@ func authorizeProjectAccess(orgID, projectID valuer.UUID, verb coretypes.Verb, c
 	if err != nil {
 		return err
 	}
-	return check(orgResource, orgSelector)
+	// Organization resources expose read/update, not project lifecycle verbs.
+	// Project attach/detach are delegated to organization update for org admins.
+	organizationVerb := verb
+	if verb == coretypes.VerbAttach || verb == coretypes.VerbDetach {
+		organizationVerb = coretypes.VerbUpdate
+	}
+	return check(orgResource, orgSelector, organizationVerb)
 }
 
 func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Verb) http.HandlerFunc {
