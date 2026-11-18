@@ -282,6 +282,22 @@ func (middleware *AuthZ) ProjectHeaderAccess(next http.HandlerFunc, verb coretyp
 	})
 }
 
+// CheckResourcesForUnscopedRequests preserves the organization-level telemetry
+// role gate for legacy requests. When ProjectHeaderAccess has already attached
+// a trusted tenant scope, the project permission check is the authorization
+// decision for this query and must not be followed by an organization-wide role
+// check (which would incorrectly reject project-only members).
+func (middleware *AuthZ) CheckResourcesForUnscopedRequests(next http.HandlerFunc, roles ...string) http.HandlerFunc {
+	organizationResourceCheck := middleware.CheckResources(next, roles...)
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if _, scoped := ctxtypes.TenantScopeFromContext(req.Context()); scoped {
+			next(rw, req)
+			return
+		}
+		organizationResourceCheck.ServeHTTP(rw, req)
+	})
+}
+
 func (middleware *AuthZ) CheckResources(next http.HandlerFunc, roles ...string) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()

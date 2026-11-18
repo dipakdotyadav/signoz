@@ -23,7 +23,7 @@ func telemetryReadScopes() []string {
 }
 
 func (provider *provider) addQuerierRoutes(router *mux.Router) error {
-	if err := router.Handle("/api/v5/query_range", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(provider.authzMiddleware.CheckResources(provider.querierHandler.QueryRange, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName), coretypes.VerbRead), handler.OpenAPIDef{
+	if err := router.Handle("/api/v5/query_range", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(provider.authzMiddleware.CheckResourcesForUnscopedRequests(provider.querierHandler.QueryRange, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName), coretypes.VerbRead), handler.OpenAPIDef{
 		ID:                 "QueryRangeV5",
 		Tags:               []string{"querier"},
 		Summary:            "Query range",
