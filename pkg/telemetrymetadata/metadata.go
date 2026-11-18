@@ -1264,7 +1264,7 @@ func (t *telemetryMetaStore) GetKeys(ctx context.Context, orgID valuer.UUID, fie
 		keys = append(keys, logsKeys...)
 
 		// get metrics keys
-		metricsKeys, metricsComplete, err := t.getMetricsKeys(ctx, selectors)
+		metricsKeys, metricsComplete, err := t.getMetricsKeys(ctx, orgID, selectors)
 		if err != nil {
 			return nil, false, err
 		}
