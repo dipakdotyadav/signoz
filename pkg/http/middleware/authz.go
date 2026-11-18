@@ -229,10 +229,6 @@ func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Ver
 	})
 }
 
-// ProjectHeaderAccess resolves an explicitly selected project for APIs whose
-// routes do not contain a {id} path parameter (for example query-range APIs).
-// The header is only a selector: the project is trusted only after the same
-// project/org authorization check used by ProjectAccess succeeds.
 // ProjectHeaderAccessIfPresent applies project authorization when a project
 // selector is supplied. Requests without the selector retain the existing
 // organization-wide behavior for backward compatibility with organization keys.
@@ -247,6 +243,10 @@ func (middleware *AuthZ) ProjectHeaderAccessIfPresent(next http.HandlerFunc, ver
 	})
 }
 
+// ProjectHeaderAccess resolves an explicitly selected project for APIs whose
+// routes do not contain a {id} path parameter (for example query-range APIs).
+// The header is only a selector: the project is trusted only after the same
+// project/org authorization check used by ProjectAccess succeeds.
 func (middleware *AuthZ) ProjectHeaderAccess(next http.HandlerFunc, verb coretypes.Verb) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		claims, err := authtypes.ClaimsFromContext(req.Context())
