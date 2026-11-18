@@ -30,6 +30,8 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/preference/implpreference"
 	"github.com/SigNoz/signoz/pkg/modules/promote"
 	"github.com/SigNoz/signoz/pkg/modules/promote/implpromote"
+	"github.com/SigNoz/signoz/pkg/modules/project"
+	"github.com/SigNoz/signoz/pkg/modules/project/implproject"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter/implquickfilter"
 	"github.com/SigNoz/signoz/pkg/modules/rawdataexport"
@@ -95,6 +97,7 @@ type Modules struct {
 	SpanMapper           spanmapper.Module
 	LLMPricingRule       llmpricingrule.Module
 	Tag                  tag.Module
+	Project              project.Module
 }
 
 func NewModules(
@@ -166,5 +169,6 @@ func NewModules(
 		SpanMapper:           spanMapper,
 		LLMPricingRule:       impllmpricingrule.NewModule(impllmpricingrule.NewStore(sqlstore), querier, telemetryMetadataStore, providerSettings),
 		Tag:                  tagModule,
+		Project:              implproject.NewModule(implproject.NewStore(sqlstore)),
 	}
 }
