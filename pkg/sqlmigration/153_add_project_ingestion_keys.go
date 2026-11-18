@@ -63,4 +63,7 @@ func (m *addProjectIngestionKeys) Up(ctx context.Context, db *bun.DB) error {
 	return tx.Commit()
 }
 
-func (m *addProjectIngestionKeys) Down(context.Context, *bun.DB) error { return nil }
+func (m *addProjectIngestionKeys) Down(ctx context.Context, db *bun.DB) error {
+	_, err := db.ExecContext(ctx, "DROP TABLE IF EXISTS project_ingestion_key")
+	return err
+}
