@@ -93,6 +93,7 @@ type Handlers struct {
 	RulerHandler            ruler.Handler
 	LLMPricingRuleHandler   llmpricingrule.Handler
 	StatsHandler            statsreporter.Handler
+	ProjectHandler          project.Handler
 }
 
 func NewHandlers(
@@ -147,5 +148,6 @@ func NewHandlers(
 		RulerHandler:            signozruler.NewHandler(rulerService),
 		LLMPricingRuleHandler:   impllmpricingrule.NewHandler(modules.LLMPricingRule),
 		StatsHandler:            statsreporter.NewHandler(statsAggregator),
+		ProjectHandler:          implproject.NewHandler(modules.Project),
 	}
 }
