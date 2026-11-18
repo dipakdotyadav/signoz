@@ -31,4 +31,5 @@ type Handler interface {
 	List(http.ResponseWriter, *http.Request)
 	Get(http.ResponseWriter, *http.Request)
 	Revoke(http.ResponseWriter, *http.Request)
+	ResolveInternal(http.ResponseWriter, *http.Request)
 }
