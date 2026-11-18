@@ -210,8 +210,8 @@ func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Ver
 			return
 		}
 
-		err = authorizeProjectAccess(orgID, projectID, verb, func(resource coretypes.Resource, selector coretypes.Selector) error {
-			return middleware.authzService.CheckResource(ctx, claims, orgID, authtypes.Relation{Verb: verb}, resource, selector)
+		err = authorizeProjectAccess(orgID, projectID, verb, func(resource coretypes.Resource, selector coretypes.Selector, checkVerb coretypes.Verb) error {
+			return middleware.authzService.CheckResource(ctx, claims, orgID, authtypes.Relation{Verb: checkVerb}, resource, selector)
 		})
 		if err != nil {
 			render.Error(rw, err)
