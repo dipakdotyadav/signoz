@@ -321,31 +321,33 @@ func writeHttpResponse(w http.ResponseWriter, data interface{}) {
 
 func (aH *APIHandler) RegisterQueryRangeV3Routes(router *mux.Router, am *middleware.AuthZ) {
 	subRouter := router.PathPrefix("/api/v3").Subrouter()
-	subRouter.HandleFunc("/autocomplete/aggregate_attributes", am.ViewAccess(
+	legacyQuery := func(next http.HandlerFunc) http.HandlerFunc {
+		return am.ViewAccess(am.RejectProjectHeaderForLegacyQuery(next))
+	}
+	subRouter.HandleFunc("/autocomplete/aggregate_attributes", legacyQuery(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autocompleteAggregateAttributes))).Methods(http.MethodGet)
-	subRouter.HandleFunc("/autocomplete/attribute_keys", am.ViewAccess(
+	subRouter.HandleFunc("/autocomplete/attribute_keys", legacyQuery(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autoCompleteAttributeKeys))).Methods(http.MethodGet)
-	subRouter.HandleFunc("/autocomplete/attribute_values", am.ViewAccess(
+	subRouter.HandleFunc("/autocomplete/attribute_values", legacyQuery(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autoCompleteAttributeValues))).Methods(http.MethodGet)
 
-	// autocomplete with filters using new endpoints
-	// Note: eventually all autocomplete APIs should be migrated to new endpoint with appropriate filters, deprecating the older ones
+	// Legacy autocomplete endpoints are organization-scoped. Project-scoped
+	// callers must use APIs that explicitly consume the authenticated TenantScope.
+	subRouter.HandleFunc("/auto_complete/attribute_values", legacyQuery(aH.autoCompleteAttributeValuesPost)).Methods(http.MethodPost)
 
-	subRouter.HandleFunc("/auto_complete/attribute_values", am.ViewAccess(aH.autoCompleteAttributeValuesPost)).Methods(http.MethodPost)
-
-	subRouter.HandleFunc("/query_range", am.ViewAccess(aH.QueryRangeV3)).Methods(http.MethodPost)
-	subRouter.HandleFunc("/query_range/format", am.ViewAccess(aH.QueryRangeV3Format)).Methods(http.MethodPost)
-
-	subRouter.HandleFunc("/filter_suggestions", am.ViewAccess(aH.getQueryBuilderSuggestions)).Methods(http.MethodGet)
-
-	// live logs
-	subRouter.HandleFunc("/logs/livetail", am.ViewAccess(aH.Signoz.Handlers.QuerierHandler.QueryRawStream)).Methods(http.MethodGet)
+	subRouter.HandleFunc("/query_range", legacyQuery(aH.QueryRangeV3)).Methods(http.MethodPost)
+	subRouter.HandleFunc("/query_range/format", legacyQuery(aH.QueryRangeV3Format)).Methods(http.MethodPost)
+	subRouter.HandleFunc("/filter_suggestions", legacyQuery(aH.getQueryBuilderSuggestions)).Methods(http.MethodGet)
+	subRouter.HandleFunc("/logs/livetail", legacyQuery(aH.Signoz.Handlers.QuerierHandler.QueryRawStream)).Methods(http.MethodGet)
 }
 
 func (aH *APIHandler) RegisterQueryRangeV4Routes(router *mux.Router, am *middleware.AuthZ) {
 	subRouter := router.PathPrefix("/api/v4").Subrouter()
-	subRouter.HandleFunc("/query_range", am.ViewAccess(aH.QueryRangeV4)).Methods(http.MethodPost)
-	subRouter.HandleFunc("/metric/metric_metadata", am.ViewAccess(aH.getMetricMetadata)).Methods(http.MethodGet)
+	legacyQuery := func(next http.HandlerFunc) http.HandlerFunc {
+		return am.ViewAccess(am.RejectProjectHeaderForLegacyQuery(next))
+	}
+	subRouter.HandleFunc("/query_range", legacyQuery(aH.QueryRangeV4)).Methods(http.MethodPost)
+	subRouter.HandleFunc("/metric/metric_metadata", legacyQuery(aH.getMetricMetadata)).Methods(http.MethodGet)
 }
 
 // todo(remove): Implemented at render package (github.com/SigNoz/signoz/pkg/http/render) with the new error structure
