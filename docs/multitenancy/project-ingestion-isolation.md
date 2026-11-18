@@ -70,3 +70,23 @@ All read paths must apply organization and project predicates derived from authe
 - Revoked and expired credentials fail closed.
 - A project ID from another organization cannot be bound to a credential.
 - Organization-level compatibility does not bypass project authorization for project-scoped users.
+
+
+## Community Edition credential-management API
+
+The project ingestion credential module is registered in the Community Edition dependency graph and exposed under the existing project API namespace:
+
+| Method | Endpoint | Project permission | Behavior |
+|---|---|---|---|
+| POST | `/api/v2/projects/{id}/ingestion-keys` | attach | Create credential; return secret once |
+| GET | `/api/v2/projects/{id}/ingestion-keys` | read | List credential metadata |
+| GET | `/api/v2/projects/{id}/ingestion-keys/{credentialId}` | read | Read credential metadata |
+| DELETE | `/api/v2/projects/{id}/ingestion-keys/{credentialId}` | delete | Revoke credential |
+
+The routes reuse the existing project authorization middleware. Project ID and organization ID are resolved from the authenticated request and route; clients cannot choose the organization binding in the request body.
+
+Credential rotation is intentionally not exposed as a non-atomic revoke-then-create operation. It should be added with a transactional store operation so a failed rotation cannot unexpectedly leave the project without a valid credential or two active credentials.
+
+## Implementation status
+
+The current code adds the model, migration, module, store, HTTP handler, dependency injection, and routes. It is not yet a complete telemetry-isolation implementation. In particular, the credential resolver is not yet wired into the OTLP receiver, and project identity is not yet persisted/enforced in telemetry queries. Build and integration verification remain required before deployment.
