@@ -156,3 +156,14 @@ The companion collector's `signoztenantcontextprocessor` test suite explicitly v
 - `signoz-ingestion-key` and `SIGNOZ-API-KEY`
 
 The test change is committed in [signoz-otel-collector commit 936c1d6](https://github.com/dipakdotyadav/signoz-otel-collector/commit/936c1d6f8f48ece89cd71ea9edbb16e49715b384). This is regression-test coverage only; the collector/API build and test workflow has not yet reported a CI run for that commit.
+
+## Legacy query endpoint guard
+
+The legacy query stacks (v1 Prometheus, v2 dashboard variables, v3 query-range/autocomplete/live-tail, and v4 query-range/metric metadata, including the EE v4 override) do not consume the authenticated project `TenantScope` consistently. They therefore must not accept a project selector and continue with organization-wide execution.
+
+These route groups now use `AuthZ.RejectProjectHeaderForLegacyQuery` after the existing role check:
+- Requests carrying `X-SigNoz-Project-ID` are rejected with a client error and directed to `/api/v5/query_range`.
+- Requests without the project selector retain the legacy organization-wide behavior.
+- The middleware does not treat the header as authorization and does not create a tenant scope.
+
+This is an explicit compatibility boundary, not full project support for legacy APIs. Remaining telemetry-returning legacy endpoints (for example service summaries, trace detail, dependency graphs, error exploration, and specialized integrations) still require route-by-route classification and either tenant-aware implementation or the same fail-closed guard before project-scoped access is advertised.
