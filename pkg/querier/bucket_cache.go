@@ -13,6 +13,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/errors"
 	"github.com/SigNoz/signoz/pkg/factory"
 	"github.com/SigNoz/signoz/pkg/types/cachetypes"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/metrictypes"
 	qbtypes "github.com/SigNoz/signoz/pkg/types/querybuildertypes/querybuildertypesv5"
 	"github.com/SigNoz/signoz/pkg/valuer"
@@ -80,7 +81,7 @@ func (bc *bucketCache) GetMissRanges(
 	cellKeys := make([]string, 0, lastCellIdx-firstCellIdx+1)
 	cellEntries := make([]cachetypes.Cacheable, 0, lastCellIdx-firstCellIdx+1)
 	for cellIdx := firstCellIdx; cellIdx <= lastCellIdx; cellIdx++ {
-		cellKeys = append(cellKeys, bc.generateCacheKey(q, cellIdx))
+		cellKeys = append(cellKeys, bc.generateCacheKeyForContext(ctx, orgID, q, cellIdx))
 		cellEntries = append(cellEntries, &qbtypes.CachedData{})
 	}
 
@@ -193,7 +194,7 @@ func (bc *bucketCache) Put(ctx context.Context, orgID valuer.UUID, q qbtypes.Que
 	cellKeys := make([]string, len(freshBuckets))
 	cellEntries := make([]cachetypes.Cacheable, len(freshBuckets))
 	for i, freshBucket := range freshBuckets {
-		cellKeys[i] = bc.generateCacheKey(q, deriveCellIdx(freshBucket.StartMs, cellWidthMs))
+		cellKeys[i] = bc.generateCacheKeyForContext(ctx, orgID, q, deriveCellIdx(freshBucket.StartMs, cellWidthMs))
 		cellEntries[i] = &qbtypes.CachedData{}
 	}
 	// A cell that could not be read comes back nil like a miss, so its entry is
@@ -222,9 +223,29 @@ func (bc *bucketCache) Put(ctx context.Context, orgID valuer.UUID, q qbtypes.Que
 	}
 }
 
-// generateCacheKey names the cache entry holding one grid cell of a query.
+// generateCacheKey names the organization-wide cache entry holding one grid
+// cell of a query. Keep this helper for tests and callers without project scope.
 func (bc *bucketCache) generateCacheKey(q qbtypes.Query, cellIdx uint64) string {
-	return fmt.Sprintf("v6:query:%s:cellidx:%d", q.Fingerprint(), cellIdx)
+	return fmt.Sprintf("v7:query:%s:cellidx:%d", q.Fingerprint(), cellIdx)
+}
+
+// generateCacheKeyForContext adds the authenticated project boundary to the
+// cache key. The cache backend already namespaces entries by orgID; project ID
+// is therefore the additional isolation dimension required for hybrid tenancy.
+// A present but inconsistent scope receives a non-shareable key rather than
+// falling back to an organization-wide entry.
+func (bc *bucketCache) generateCacheKeyForContext(ctx context.Context, orgID valuer.UUID, q qbtypes.Query, cellIdx uint64) string {
+	key := bc.generateCacheKey(q, cellIdx)
+	scope, ok := ctxtypes.TenantScopeFromContext(ctx)
+	if !ok {
+		return key
+	}
+
+	if scope.OrgID != orgID.String() {
+		return key + ":tenant-scope-invalid"
+	}
+
+	return key + ":project:" + scope.ProjectID
 }
 
 // deriveCellIdx returns the index of the grid cell holding startMs; with no grid
