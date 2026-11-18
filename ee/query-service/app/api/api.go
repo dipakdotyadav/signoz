@@ -70,8 +70,9 @@ func (ah *APIHandler) RegisterRoutes(router *mux.Router, am *middleware.AuthZ) {
 	// base overrides
 	router.HandleFunc("/api/v1/version", am.OpenAccess(ah.getVersion)).Methods(http.MethodGet)
 
-	// v4
-	router.HandleFunc("/api/v4/query_range", am.ViewAccess(ah.queryRangeV4)).Methods(http.MethodPost)
+	// v4: the legacy EE query implementation does not consume TenantScope.
+	router.HandleFunc("/api/v4/query_range", am.ViewAccess(
+		am.RejectProjectHeaderForLegacyQuery(ah.queryRangeV4))).Methods(http.MethodPost)
 
 	ah.APIHandler.RegisterRoutes(router, am)
 
