@@ -228,6 +228,7 @@ func newProvider(
 	authzService authz.AuthZ,
 	orgHandler organization.Handler,
 	projectHandler project.Handler,
+	projectIngestionKeyHandler projectingestionkey.Handler,
 	userHandler user.Handler,
 	sessionHandler session.Handler,
 	authDomainHandler authdomain.Handler,
