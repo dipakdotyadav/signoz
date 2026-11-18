@@ -613,7 +613,7 @@ func (provider *provider) addQuerierRoutes(router *mux.Router) error {
 		return err
 	}
 
-	if err := router.Handle("/api/v5/query_range/preview", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(provider.authzMiddleware.CheckResources(provider.querierHandler.QueryRangePreview, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName), coretypes.VerbRead), handler.OpenAPIDef{
+	if err := router.Handle("/api/v5/query_range/preview", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(provider.authzMiddleware.CheckResourcesForUnscopedRequests(provider.querierHandler.QueryRangePreview, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName), coretypes.VerbRead), handler.OpenAPIDef{
 		ID:                  "QueryRangePreviewV5",
 		Tags:                []string{"querier"},
 		Summary:             "Query range preview",

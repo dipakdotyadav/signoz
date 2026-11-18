@@ -27,7 +27,6 @@ func TestProjectHeaderAccessIfPresentPreservesOrganizationWideRequests(t *testin
 	require.Equal(t, http.StatusOK, recorder.Code)
 }
 
-
 func TestCheckResourcesForUnscopedRequestsUsesProjectScopeAuthorization(t *testing.T) {
 	middleware := &AuthZ{}
 	called := false
@@ -37,7 +36,7 @@ func TestCheckResourcesForUnscopedRequestsUsesProjectScopeAuthorization(t *testi
 	handler := middleware.CheckResourcesForUnscopedRequests(next, "viewer")
 	req := httptest.NewRequest(http.MethodPost, "/api/v5/query_range", nil)
 	req = req.WithContext(ctxtypes.NewContextWithTenantScope(req.Context(), ctxtypes.TenantScope{
-		OrgID: "11111111-1111-4111-8111-111111111111",
+		OrgID:     "11111111-1111-4111-8111-111111111111",
 		ProjectID: "22222222-2222-4222-8222-222222222222",
 	}))
 	recorder := httptest.NewRecorder()
