@@ -28,6 +28,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/metricsexplorer"
 	"github.com/SigNoz/signoz/pkg/modules/organization"
 	"github.com/SigNoz/signoz/pkg/modules/project"
+	"github.com/SigNoz/signoz/pkg/modules/projectingestionkey"
 	"github.com/SigNoz/signoz/pkg/modules/preference"
 	"github.com/SigNoz/signoz/pkg/modules/promote"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter"
@@ -62,6 +63,7 @@ type provider struct {
 	authzService               authz.AuthZ
 	orgHandler                 organization.Handler
 	projectHandler             project.Handler
+	projectIngestionKeyHandler  projectingestionkey.Handler
 	userHandler                user.Handler
 	sessionHandler             session.Handler
 	authDomainHandler          authdomain.Handler
@@ -110,6 +112,7 @@ func NewFactory(
 	authzService authz.AuthZ,
 	orgHandler organization.Handler,
 	projectHandler project.Handler,
+	projectIngestionKeyHandler projectingestionkey.Handler,
 	userHandler user.Handler,
 	sessionHandler session.Handler,
 	authDomainHandler authdomain.Handler,
@@ -166,6 +169,7 @@ func NewFactory(
 			authzService,
 			orgHandler,
 			projectHandler,
+			projectIngestionKeyHandler,
 			userHandler,
 			sessionHandler,
 			authDomainHandler,
@@ -281,6 +285,7 @@ func newProvider(
 		healthyC:                   make(chan struct{}),
 		orgHandler:                 orgHandler,
 		projectHandler:             projectHandler,
+		projectIngestionKeyHandler: projectIngestionKeyHandler,
 		userHandler:                userHandler,
 		authzService:               authzService,
 		sessionHandler:             sessionHandler,
