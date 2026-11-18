@@ -88,7 +88,7 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 
 
 	if err := router.Handle("/api/v2/projects/{id}/members", handler.New(
-		provider.authzMiddleware.CheckResources(provider.projectHandler.ListMembers, authtypes.SigNozAdminRoleName),
+		provider.authzMiddleware.ProjectAccess(provider.projectHandler.ListMembers, coretypes.VerbRead),
 		handler.OpenAPIDef{
 			ID: "ListProjectMembers", Tags: []string{"projects"}, Summary: "List project members",
 			Description: "Lists users and service accounts assigned to a project",
@@ -103,7 +103,7 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 	)).Methods(http.MethodGet).GetError(); err != nil { return err }
 
 	if err := router.Handle("/api/v2/projects/{id}/members", handler.New(
-		provider.authzMiddleware.CheckResources(provider.projectHandler.AddMember, authtypes.SigNozAdminRoleName),
+		provider.authzMiddleware.ProjectAccess(provider.projectHandler.AddMember, coretypes.VerbAttach),
 		handler.OpenAPIDef{
 			ID: "AddProjectMember", Tags: []string{"projects"}, Summary: "Add project member",
 			Description: "Assigns a user or service account a project role",
@@ -118,7 +118,7 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 	)).Methods(http.MethodPost).GetError(); err != nil { return err }
 
 	if err := router.Handle("/api/v2/projects/{id}/members", handler.New(
-		provider.authzMiddleware.CheckResources(provider.projectHandler.RemoveMember, authtypes.SigNozAdminRoleName),
+		provider.authzMiddleware.ProjectAccess(provider.projectHandler.RemoveMember, coretypes.VerbDetach),
 		handler.OpenAPIDef{
 			ID: "RemoveProjectMember", Tags: []string{"projects"}, Summary: "Remove project member",
 			Description: "Removes a user or service account from a project",
