@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"testing"
 
 	"github.com/SigNoz/signoz/pkg/errors"
@@ -55,4 +54,3 @@ func TestAuthorizeProjectAccess(t *testing.T) {
 	}
 }
 
-var _ = context.Background
