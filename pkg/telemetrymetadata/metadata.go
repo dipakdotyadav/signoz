@@ -421,8 +421,8 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 	})
 
 	// Log tag/key tables are not tenant-keyed yet. Do not expose their
-	// cross-tenant contents through a tenant-scoped metadata request.
-	if _, tenantScoped := ctxtypes.TenantScopeFromContext(ctx); tenantScoped {
+	// cross-tenant contents through an organization-scoped metadata request.
+	if !orgID.IsZero() {
 		return nil, true, nil
 	}
 
@@ -1605,8 +1605,8 @@ func (t *telemetryMetaStore) getLogFieldValues(ctx context.Context, orgID valuer
 	})
 
 	// Log tag/value tables are not tenant-keyed yet. Fail closed for
-	// tenant-scoped metadata requests until the log storage migration lands.
-	if _, tenantScoped := ctxtypes.TenantScopeFromContext(ctx); tenantScoped {
+	// organization-scoped metadata requests until the log storage migration lands.
+	if !orgID.IsZero() {
 		return &telemetrytypes.TelemetryFieldValues{}, true, nil
 	}
 
