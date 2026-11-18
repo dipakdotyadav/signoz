@@ -53,3 +53,10 @@ type ProjectStore interface {
 	Update(context.Context, valuer.UUID, *Project) error
 	Delete(context.Context, valuer.UUID, valuer.UUID) error
 }
+
+type ProjectMember struct {
+	PrincipalType string `json:"principalType"`
+	PrincipalID   string `json:"principalId"`
+	Role          string `json:"role"`
+}
+
