@@ -184,6 +184,6 @@ The companion Community Edition collector's metric reduction rules can remove re
 
 The multi-tenant collector overlay also includes both tenant identifiers in the span-metrics dimensions. This ensures span-derived metrics retain project identity when traces are converted into metrics.
 
-Regression tests in the collector verify that reduced rows retain both tenant attributes and that otherwise-identical series from two projects retain distinct reduced fingerprints. These tests complement the query-builder storage tests, which verify that mandatory tenant predicates compile for traces, logs, and metrics.
+Regression tests in the collector verify that reduced rows retain both tenant attributes and that otherwise-identical series from two projects retain distinct reduced fingerprints. These tests complement the query-builder storage tests, which verify that mandatory tenant predicates compile for traces, logs, and metrics. The metrics statement-builder regression also verifies that the tenant predicates are applied to both the raw time-series catalog and the reduced time-series catalog before joining their respective sample tables.
 
 This does not replace an end-to-end ClickHouse test: the full ingestion -> spanmetrics/reduction -> persisted rows -> V5 query path still needs to be exercised against a real ClickHouse instance.
