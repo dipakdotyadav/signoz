@@ -94,6 +94,7 @@ type Handlers struct {
 	LLMPricingRuleHandler   llmpricingrule.Handler
 	StatsHandler            statsreporter.Handler
 	ProjectHandler          project.Handler
+	ProjectIngestionKeyHandler projectingestionkey.Handler
 }
 
 func NewHandlers(
@@ -149,5 +150,6 @@ func NewHandlers(
 		LLMPricingRuleHandler:   impllmpricingrule.NewHandler(modules.LLMPricingRule),
 		StatsHandler:            statsreporter.NewHandler(statsAggregator),
 		ProjectHandler:          implproject.NewHandler(modules.Project),
+		ProjectIngestionKeyHandler: implprojectingestionkey.NewHandler(modules.ProjectIngestionKey),
 	}
 }
