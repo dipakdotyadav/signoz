@@ -2,10 +2,12 @@ package signozapiserver
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/SigNoz/signoz/pkg/http/handler"
 	"github.com/SigNoz/signoz/pkg/types"
 	"github.com/SigNoz/signoz/pkg/types/authtypes"
+	"github.com/SigNoz/signoz/pkg/valuer"
 	"github.com/SigNoz/signoz/pkg/types/coretypes"
 	"github.com/gorilla/mux"
 )
@@ -130,6 +132,56 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 			Resource: coretypes.ResourceOrganization, Verb: coretypes.VerbUpdate,
 			Category: coretypes.ActionCategoryConfigurationChange, ID: provider.orgIDExtractor(), Selector: coretypes.IDSelector,
 		}),
+	)).Methods(http.MethodDelete).GetError(); err != nil { return err }
+
+
+	// Project ingestion credentials are project-scoped and use the same
+	// OpenFGA project authorization checks as project membership management.
+	if err := router.Handle("/api/v2/projects/{id}/ingestion-keys", handler.New(
+		provider.authzMiddleware.ProjectAccess(provider.projectIngestionKeyHandler.Create, coretypes.VerbAttach),
+		handler.OpenAPIDef{
+			ID: "CreateProjectIngestionKey", Tags: []string{"projects", "ingestion-keys"},
+			Summary: "Create project ingestion credential",
+			Description: "Creates a project-scoped ingestion credential. The secret is returned only once.",
+			Request: new(struct { Name string `json:"name"`; ExpiresAt *time.Time `json:"expiresAt,omitempty"` }),
+			RequestContentType: "application/json",
+			Response: new(struct { ID valuer.UUID `json:"id"`; Secret string `json:"secret"` }),
+			ResponseContentType: "application/json",
+			SuccessStatusCode: http.StatusCreated,
+			SecuritySchemes: newScopedSecuritySchemes([]string{coretypes.ResourceOrganization.Scope(coretypes.VerbUpdate)}),
+		},
+	)).Methods(http.MethodPost).GetError(); err != nil { return err }
+
+	if err := router.Handle("/api/v2/projects/{id}/ingestion-keys", handler.New(
+		provider.authzMiddleware.ProjectAccess(provider.projectIngestionKeyHandler.List, coretypes.VerbRead),
+		handler.OpenAPIDef{
+			ID: "ListProjectIngestionKeys", Tags: []string{"projects", "ingestion-keys"},
+			Summary: "List project ingestion credentials",
+			Response: make([]*types.ProjectIngestionKey, 0), ResponseContentType: "application/json",
+			SuccessStatusCode: http.StatusOK,
+			SecuritySchemes: newScopedSecuritySchemes([]string{coretypes.ResourceOrganization.Scope(coretypes.VerbRead)}),
+		},
+	)).Methods(http.MethodGet).GetError(); err != nil { return err }
+
+	if err := router.Handle("/api/v2/projects/{id}/ingestion-keys/{credentialId}", handler.New(
+		provider.authzMiddleware.ProjectAccess(provider.projectIngestionKeyHandler.Get, coretypes.VerbRead),
+		handler.OpenAPIDef{
+			ID: "GetProjectIngestionKey", Tags: []string{"projects", "ingestion-keys"},
+			Summary: "Get project ingestion credential metadata",
+			Response: new(types.ProjectIngestionKey), ResponseContentType: "application/json",
+			SuccessStatusCode: http.StatusOK, ErrorStatusCodes: []int{http.StatusNotFound},
+			SecuritySchemes: newScopedSecuritySchemes([]string{coretypes.ResourceOrganization.Scope(coretypes.VerbRead)}),
+		},
+	)).Methods(http.MethodGet).GetError(); err != nil { return err }
+
+	if err := router.Handle("/api/v2/projects/{id}/ingestion-keys/{credentialId}", handler.New(
+		provider.authzMiddleware.ProjectAccess(provider.projectIngestionKeyHandler.Revoke, coretypes.VerbDelete),
+		handler.OpenAPIDef{
+			ID: "RevokeProjectIngestionKey", Tags: []string{"projects", "ingestion-keys"},
+			Summary: "Revoke project ingestion credential",
+			SuccessStatusCode: http.StatusNoContent, ErrorStatusCodes: []int{http.StatusNotFound},
+			SecuritySchemes: newScopedSecuritySchemes([]string{coretypes.ResourceOrganization.Scope(coretypes.VerbUpdate)}),
+		},
 	)).Methods(http.MethodDelete).GetError(); err != nil { return err }
 
 	return nil
