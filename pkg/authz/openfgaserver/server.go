@@ -142,6 +142,33 @@ func (server *Server) BatchCheck(ctx context.Context, tupleReq map[string]*openf
 	return response, nil
 }
 
+// CheckResource evaluates a concrete resource permission for the authenticated principal.
+func (server *Server) CheckResource(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, relation authtypes.Relation, resource coretypes.Resource, selector coretypes.Selector) error {
+	var subject string
+	switch claims.Principal {
+	case authtypes.PrincipalUser:
+		subject = authtypes.MustNewSubject(coretypes.NewResourceUser(), claims.UserID, orgID, nil)
+	case authtypes.PrincipalServiceAccount:
+		subject = authtypes.MustNewSubject(coretypes.NewResourceServiceAccount(), claims.ServiceAccountID, orgID, nil)
+	default:
+		return errors.New(errors.TypeUnauthenticated, errors.CodeUnauthenticated, "unsupported principal")
+	}
+
+	tuple := &openfgav1.TupleKey{
+		User: subject,
+		Relation: relation.StringValue(),
+		Object: resource.Object(orgID, selector.String()),
+	}
+	results, err := server.BatchCheck(ctx, map[string]*openfgav1.TupleKey{"resource": tuple})
+	if err != nil {
+		return err
+	}
+	if result, ok := results["resource"]; ok && result.Authorized {
+		return nil
+	}
+	return errors.New(errors.TypeForbidden, authtypes.ErrCodeAuthZForbidden, "principal is not authorized for requested resource")
+}
+
 func (server *Server) CheckWithTupleCreation(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, _ authtypes.Relation, _ coretypes.Resource, _ []coretypes.Selector, roleSelectors []coretypes.Selector) error {
 	subject := ""
 	switch claims.Principal {
