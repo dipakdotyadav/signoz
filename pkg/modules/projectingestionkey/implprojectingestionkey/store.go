@@ -17,7 +17,17 @@ func NewStore(sqlstore sqlstore.SQLStore) projectingestionkey.Store {
 }
 
 func (s *store) Create(ctx context.Context, key *types.ProjectIngestionKey) error {
-	_, err := s.sqlstore.BunDBCtx(ctx).NewInsert().Model(key).Exec(ctx)
+	// Validate the organization/project pair against the canonical project row.
+	// This prevents credentials from being bound to a project in another org.
+	project := new(types.Project)
+	err := s.sqlstore.BunDBCtx(ctx).NewSelect().Model(project).
+		Where("project.id = ?", key.ProjectID).
+		Where("project.org_id = ?", key.OrgID).
+		Where("project.status = ?", types.ProjectStatusActive).Scan(ctx)
+	if err != nil {
+		return s.sqlstore.WrapNotFoundErrf(err, types.ErrProjectNotFound, "active project %s does not exist in organization %s", key.ProjectID, key.OrgID)
+	}
+	_, err = s.sqlstore.BunDBCtx(ctx).NewInsert().Model(key).Exec(ctx)
 	return err
 }
 
