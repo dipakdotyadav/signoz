@@ -278,8 +278,8 @@ func NewSQLMigrationProviderFactories(
 		sqlmigration.NewMigrateRelatedLinksTemplateFactory(),
 		sqlmigration.NewAddOrganizationTuplesFactory(sqlstore),
 		sqlmigration.NewAddOrgPreferenceTuplesFactory(sqlstore),
-		sqlmigration.NewAddProjectTuplesFactory(sqlstore),
 		sqlmigration.NewAddProjectsFactory(sqlschema),
+		sqlmigration.NewAddProjectTuplesFactory(sqlstore),
 	)
 }
 
