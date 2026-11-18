@@ -14,6 +14,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/types/authtypes"
 	"github.com/SigNoz/signoz/pkg/types/coretypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
+	"github.com/gorilla/mux"
 )
 
 const (
@@ -158,6 +159,24 @@ func (middleware *AuthZ) OpenAccess(next http.HandlerFunc) http.HandlerFunc {
 
 // CheckResources authorizes every resolved resource for the route. roles are the
 // allowed role names (the OSS role-gate); the resource selectors drive the EE check.
+// ProjectAccess authorizes access to a project using direct project relationships and organization role inheritance.
+func (middleware *AuthZ) ProjectAccess(next http.HandlerFunc, verb coretypes.Verb) http.HandlerFunc {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		claims, err := authtypes.ClaimsFromContext(req.Context())
+		if err != nil { render.Error(rw, err); return }
+		orgID, err := valuer.NewUUID(claims.OrgID)
+		if err != nil { render.Error(rw, err); return }
+		projectID, err := valuer.NewUUID(mux.Vars(req)["id"])
+		if err != nil { render.Error(rw, err); return }
+		resource := coretypes.NewResourceMetaResource(coretypes.KindProject)
+		selector, err := resource.Type().Selector(projectID.String())
+		if err != nil { render.Error(rw, err); return }
+		err = middleware.authzService.CheckResource(req.Context(), claims, orgID, authtypes.Relation{Verb: verb}, resource, selector)
+		if err != nil { render.Error(rw, err); return }
+		next(rw, req)
+	})
+}
+
 func (middleware *AuthZ) CheckResources(next http.HandlerFunc, roles ...string) http.HandlerFunc {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := req.Context()
