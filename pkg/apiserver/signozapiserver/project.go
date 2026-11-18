@@ -11,13 +11,6 @@ import (
 )
 
 func (provider *provider) addProjectRoutes(router *mux.Router) error {
-	orgResource := handler.BasicResourceDef{
-		Resource: coretypes.ResourceOrganization,
-		Category: coretypes.ActionCategoryConfigurationChange,
-		ID:       provider.orgIDExtractor(),
-		Selector: coretypes.IDSelector,
-	}
-
 	if err := router.Handle("/api/v2/projects", handler.New(
 		provider.authzMiddleware.CheckResources(provider.projectHandler.Create, authtypes.SigNozAdminRoleName),
 		handler.OpenAPIDef{
@@ -93,8 +86,5 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 		}),
 	)).Methods(http.MethodDelete).GetError(); err != nil { return err }
 
-	_ = orgResource
 	return nil
 }
-
-var _ mux.Route
