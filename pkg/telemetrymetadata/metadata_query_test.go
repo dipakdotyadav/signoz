@@ -136,3 +136,39 @@ func TestAddMetricMetadataProjectScope(t *testing.T) {
 	require.Contains(t, args, "11111111-1111-4111-8111-111111111111")
 	require.Contains(t, args, "22222222-2222-4222-8222-222222222222")
 }
+
+
+func TestAddTraceMetadataTenantScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	projectID := "22222222-2222-4222-8222-222222222222"
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID,
+	})
+	sb := sqlbuilder.Select("*").From("signoz_traces.span_attributes_keys")
+	require.NoError(t, addTraceMetadataTenantScope(ctx, orgID, sb))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "org_id")
+	require.Contains(t, query, "project_id")
+	require.Contains(t, args, orgID.String())
+	require.Contains(t, args, projectID)
+}
+
+func TestAddTraceMetadataTenantScopeOrganizationOnly(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	sb := sqlbuilder.Select("*").From("signoz_traces.span_attributes_keys")
+	require.NoError(t, addTraceMetadataTenantScope(context.Background(), orgID, sb))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "org_id")
+	require.NotContains(t, query, "project_id")
+	require.Contains(t, args, orgID.String())
+}
+
+func TestAddTraceMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "99999999-9999-4999-8999-999999999999",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	sb := sqlbuilder.Select("*").From("signoz_traces.span_attributes_keys")
+	require.Error(t, addTraceMetadataTenantScope(ctx, orgID, sb))
+}
