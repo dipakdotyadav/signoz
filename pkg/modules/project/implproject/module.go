@@ -210,13 +210,15 @@ func (m *module) AddMember(ctx context.Context, orgID, projectID valuer.UUID, me
 	for _, verb := range verbs {
 		desired = append(desired, &openfgav1.TupleKey{User: subject, Relation: verb.StringValue(), Object: object})
 	}
-	existing := make([]*openfgav1.TupleKey, 0, 7)
-	for _, verb := range []coretypes.Verb{coretypes.VerbRead, coretypes.VerbUpdate, coretypes.VerbCreate, coretypes.VerbDelete, coretypes.VerbAttach, coretypes.VerbDetach, coretypes.VerbList} {
-		tuples, err := m.authz.ReadTuples(ctx, &openfgav1.ReadRequestTupleKey{User: subject, Relation: verb.StringValue(), Object: object})
-		if err != nil { return err }
-		existing = append(existing, tuples...)
+	// Construct the complete permission set and reconcile it in one OpenFGA
+	// write. This avoids a read/modify/write race and guarantees that changing
+	// editor -> viewer removes every permission not granted to a viewer.
+	allVerbs := []coretypes.Verb{coretypes.VerbRead, coretypes.VerbUpdate, coretypes.VerbCreate, coretypes.VerbDelete, coretypes.VerbAttach, coretypes.VerbDetach, coretypes.VerbList}
+	all := make([]*openfgav1.TupleKey, 0, len(allVerbs))
+	for _, verb := range allVerbs {
+		all = append(all, &openfgav1.TupleKey{User: subject, Relation: verb.StringValue(), Object: object})
 	}
-	additions, deletions := authtypes.DiffTuples(existing, desired)
+	additions, deletions := authtypes.DiffTuples(all, desired)
 	return m.authz.Write(ctx, additions, deletions)
 }
 
