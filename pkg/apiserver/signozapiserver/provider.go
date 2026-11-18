@@ -27,6 +27,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/metricreductionrule"
 	"github.com/SigNoz/signoz/pkg/modules/metricsexplorer"
 	"github.com/SigNoz/signoz/pkg/modules/organization"
+	"github.com/SigNoz/signoz/pkg/modules/project"
 	"github.com/SigNoz/signoz/pkg/modules/preference"
 	"github.com/SigNoz/signoz/pkg/modules/promote"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter"
@@ -60,6 +61,7 @@ type provider struct {
 	authzMiddleware            *middleware.AuthZ
 	authzService               authz.AuthZ
 	orgHandler                 organization.Handler
+	projectHandler             project.Handler
 	userHandler                user.Handler
 	sessionHandler             session.Handler
 	authDomainHandler          authdomain.Handler
@@ -107,6 +109,7 @@ func NewFactory(
 	orgGetter organization.Getter,
 	authzService authz.AuthZ,
 	orgHandler organization.Handler,
+	projectHandler project.Handler,
 	userHandler user.Handler,
 	sessionHandler session.Handler,
 	authDomainHandler authdomain.Handler,
@@ -162,6 +165,7 @@ func NewFactory(
 			orgGetter,
 			authzService,
 			orgHandler,
+			projectHandler,
 			userHandler,
 			sessionHandler,
 			authDomainHandler,
@@ -275,6 +279,7 @@ func newProvider(
 		router:                     router,
 		healthyC:                   make(chan struct{}),
 		orgHandler:                 orgHandler,
+		projectHandler:             projectHandler,
 		userHandler:                userHandler,
 		authzService:               authzService,
 		sessionHandler:             sessionHandler,
