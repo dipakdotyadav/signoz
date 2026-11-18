@@ -2,6 +2,7 @@ package projectingestionkey
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/SigNoz/signoz/pkg/types"
@@ -23,4 +24,11 @@ type Module interface {
 	List(context.Context, valuer.UUID, valuer.UUID) ([]*types.ProjectIngestionKey, error)
 	Revoke(context.Context, valuer.UUID, valuer.UUID, valuer.UUID) error
 	Resolve(context.Context, string) (*types.ProjectIngestionKey, error)
+}
+
+type Handler interface {
+	Create(http.ResponseWriter, *http.Request)
+	List(http.ResponseWriter, *http.Request)
+	Get(http.ResponseWriter, *http.Request)
+	Revoke(http.ResponseWriter, *http.Request)
 }
