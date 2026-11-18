@@ -4,18 +4,15 @@
 
 Accepted design for the multi-tenancy implementation. This document records the ingestion boundary before introducing project credentials and changing telemetry storage.
 
-## Existing SigNoz behavior
+## Scope: Community Edition only
 
-The current code has two different credential paths:
+This implementation targets the self-hosted SigNoz Community Edition. Cloud gateway behavior, Cloud-specific ingestion keys, hosted control planes, and Cloud deployment compatibility are explicitly out of scope.
 
-- Cloud ingestion keys are proxied through the external gateway API. They are workspace-scoped and are not a suitable source of project identity in a self-hosted deployment.
-- Self-hosted API keys authenticate service accounts. The service-account identity currently resolves to an organization and does not identify a project.
-
-Therefore, attaching a client-supplied `project_id` attribute or adding a project field to the Cloud gateway response would not establish a trusted isolation boundary.
+The current Community Edition API keys authenticate service accounts. The service-account identity resolves to an organization and does not identify a project. Attaching a client-supplied `project_id` attribute is not a trusted isolation boundary.
 
 ## Decision
 
-Introduce a first-party project ingestion credential subsystem, independent of the Cloud gateway.
+Introduce a first-party project ingestion credential subsystem for Community Edition.
 
 A credential is bound at creation time to exactly one organization and one project. The project must belong to that organization and be active. The credential resolver derives both IDs from the credential record; it must never trust organization or project IDs supplied by the telemetry client.
 
