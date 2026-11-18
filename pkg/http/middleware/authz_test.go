@@ -22,6 +22,7 @@ func TestAuthorizeProjectAccess(t *testing.T) {
 		orgErr error
 		wantCalls []string
 		wantErr bool
+		verb coretypes.Verb
 	}{
 		{name: "direct project grant", wantCalls: []string{"metaresource:project:read"}, verb: coretypes.VerbRead},
 		{name: "organization role fallback", projectErr: forbidden, wantCalls: []string{"metaresource:project:read", "organization:organization:read"}, verb: coretypes.VerbRead},
@@ -33,7 +34,7 @@ func TestAuthorizeProjectAccess(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			calls := make([]string, 0, 2)
 			err := authorizeProjectAccess(orgID, projectID, tt.verb, func(resource coretypes.Resource, selector coretypes.Selector, verb coretypes.Verb) error {
-				calls = append(calls, resource.Type().StringValue()+":"+resource.Kind().String())
+				calls = append(calls, resource.Type().StringValue()+":"+resource.Kind().String()+":"+verb.StringValue())
 				if resource.Type().Equals(coretypes.TypeMetaResource) {
 					return tt.projectErr
 				}
