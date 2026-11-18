@@ -13,6 +13,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/instrumentation/instrumentationtest"
 	qbtypes "github.com/SigNoz/signoz/pkg/types/querybuildertypes/querybuildertypesv5"
 	"github.com/SigNoz/signoz/pkg/types/telemetrytypes"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1624,3 +1625,43 @@ func TestBucketCachePutLeavesAnUnchangedCellAlone(t *testing.T) {
 	require.NoError(t, bc.cache.Get(ctx, orgID, bc.generateCacheKey(wide, 0), &cellEntry))
 	assert.Equal(t, []string{"from the wide write"}, cellEntry.Warnings)
 }
+
+
+func TestBucketCacheProjectScopePartitionsCacheKeys(t *testing.T) {
+	bc := createTestBucketCache(t)
+	query := &mockQuery{fingerprint: "same-query", startMs: 1_000, endMs: 10_000}
+	orgID, err := valuer.NewUUID("11111111-1111-4111-8111-111111111111")
+	require.NoError(t, err)
+
+	projectA := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	projectB := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: "33333333-3333-4333-8333-333333333333",
+	})
+
+	keyA := bc.generateCacheKeyForContext(projectA, orgID, query, 7)
+	keyB := bc.generateCacheKeyForContext(projectB, orgID, query, 7)
+	orgKey := bc.generateCacheKeyForContext(context.Background(), orgID, query, 7)
+
+	require.NotEqual(t, keyA, keyB, "projects in the same organization must not share a cache key")
+	require.NotEqual(t, keyA, orgKey, "project-scoped entries must not collide with organization-wide entries")
+	require.NotEqual(t, keyB, orgKey, "project-scoped entries must not collide with organization-wide entries")
+	require.Contains(t, keyA, ":project:22222222-2222-4222-8222-222222222222")
+	require.Contains(t, keyB, ":project:33333333-3333-4333-8333-333333333333")
+}
+
+func TestBucketCacheInvalidTenantScopeDoesNotUseOrganizationKey(t *testing.T) {
+	bc := createTestBucketCache(t)
+	query := &mockQuery{fingerprint: "same-query", startMs: 1_000, endMs: 10_000}
+	orgID, err := valuer.NewUUID("11111111-1111-4111-8111-111111111111")
+	require.NoError(t, err)
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "99999999-9999-4999-8999-999999999999", ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+
+	key := bc.generateCacheKeyForContext(ctx, orgID, query, 7)
+	require.NotEqual(t, bc.generateCacheKey(query, 7), key, "invalid scoped requests must not fall back to the organization-wide key")
+	require.Contains(t, key, ":tenant-scope-invalid")
+}
+
