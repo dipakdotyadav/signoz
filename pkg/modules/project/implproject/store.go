@@ -2,6 +2,7 @@ package implproject
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/SigNoz/signoz/pkg/sqlstore"
@@ -42,19 +43,26 @@ func (s *store) List(ctx context.Context, orgID valuer.UUID) ([]*types.Project, 
 }
 
 func (s *store) Update(ctx context.Context, orgID valuer.UUID, project *types.Project) error {
-	_, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model(project).
+	result, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model(project).
 		Column("name", "slug", "description", "status", "updated_at").
 		Where("project.id = ?", project.ID).Where("project.org_id = ?", orgID).Exec(ctx)
 	if err != nil {
 		return s.sqlstore.WrapAlreadyExistsErrf(err, types.ErrProjectAlreadyExists, "project slug %q already exists in organization", project.Slug)
 	}
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return s.sqlstore.WrapNotFoundErrf(sql.ErrNoRows, types.ErrProjectNotFound, "project %s does not exist in organization %s", project.ID, orgID)
+	}
 	return nil
 }
 
 func (s *store) Delete(ctx context.Context, orgID, id valuer.UUID) error {
-	_, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model((*types.Project)(nil)).
+	result, err := s.sqlstore.BunDBCtx(ctx).NewUpdate().Model((*types.Project)(nil)).
 		Set("status = ?", types.ProjectStatusArchived).
 		Set("updated_at = ?", time.Now()).
 		Where("org_id = ?", orgID).Where("id = ?", id).Exec(ctx)
-	return err
+	if err != nil { return err }
+	if affected, _ := result.RowsAffected(); affected == 0 {
+		return s.sqlstore.WrapNotFoundErrf(sql.ErrNoRows, types.ErrProjectNotFound, "project %s does not exist in organization %s", id, orgID)
+	}
+	return nil
 }
