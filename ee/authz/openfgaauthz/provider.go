@@ -74,6 +74,10 @@ func (provider *provider) Stop(ctx context.Context) error {
 	return provider.openfgaServer.Stop(ctx)
 }
 
+func (provider *provider) CheckResource(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, relation authtypes.Relation, resource coretypes.Resource, selector coretypes.Selector) error {
+	return provider.pkgAuthzService.CheckResource(ctx, claims, orgID, relation, resource, selector)
+}
+
 func (provider *provider) CheckWithTupleCreation(ctx context.Context, claims authtypes.Claims, orgID valuer.UUID, relation authtypes.Relation, typeable coretypes.Resource, selectors []coretypes.Selector, roleSelectors []coretypes.Selector) error {
 	return provider.openfgaServer.CheckWithTupleCreation(ctx, claims, orgID, relation, typeable, selectors, roleSelectors)
 }
