@@ -111,6 +111,10 @@ func New(
 
 func (q *querier) QueryRange(ctx context.Context, orgID valuer.UUID, req *qbtypes.QueryRangeRequest) (*qbtypes.QueryRangeResponse, error) {
 
+	if err := applyTenantScope(ctx, orgID, req); err != nil {
+		return nil, err
+	}
+
 	// Callers that build the request in-process never pass through
 	// UnmarshalJSON, so normalise here too.
 	req.Start = qbtypes.ToMilliSecs(req.Start)
@@ -537,6 +541,11 @@ func familyTemporality(temporalities map[string]metrictypes.Temporality, names [
 }
 
 func (q *querier) QueryRawStream(ctx context.Context, orgID valuer.UUID, req *qbtypes.QueryRangeRequest, client *qbtypes.RawStream) {
+
+	if err := applyTenantScope(ctx, orgID, req); err != nil {
+		client.Error <- err
+		return
+	}
 
 	req.Start = qbtypes.ToMilliSecs(req.Start)
 	req.End = qbtypes.ToMilliSecs(req.End)

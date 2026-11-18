@@ -377,6 +377,12 @@ func costGuardSuggestions(advisory string) []string {
 //     (e.g. traces disabled). We must not short-circuit; instead leave the
 //     window untouched and let the query run.
 func (q *builderQuery[T]) narrowWindowByTraceID(ctx context.Context, fromMS, toMS uint64) (uint64, uint64, bool, string) {
+	// Trace-summary lookups are not project-scoped yet. Avoid consulting them
+	// for project requests until the summary table carries tenant dimensions.
+	if _, scoped := ctxtypes.TenantScopeFromContext(ctx); scoped {
+		return fromMS, toMS, true, ""
+	}
+
 	if q.spec.Filter == nil || q.spec.Filter.Expression == "" {
 		return fromMS, toMS, true, ""
 	}

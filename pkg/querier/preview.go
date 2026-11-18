@@ -23,6 +23,10 @@ func (q *querier) QueryRangePreview(
 	opts qbtypes.QueryRangePreviewOptions,
 ) (*qbtypes.QueryRangePreviewResponse, error) {
 
+	if err := applyTenantScope(ctx, orgID, req); err != nil {
+		return nil, err
+	}
+
 	validationOpts, err := req.ValidateRequestScope()
 	if err != nil {
 		return nil, err
