@@ -184,5 +184,24 @@ func (provider *provider) addProjectRoutes(router *mux.Router) error {
 		},
 	)).Methods(http.MethodDelete).GetError(); err != nil { return err }
 
+
+	// Private collector-to-API credential resolution. The handler requires a
+	// constant-time checked service token and returns canonical IDs only.
+	if err := router.Handle("/api/v2/internal/ingestion-keys/resolve", handler.New(
+		provider.projectIngestionKeyHandler.ResolveInternal,
+		handler.OpenAPIDef{
+			ID: "ResolveProjectIngestionKeyInternal",
+			Tags: []string{"internal"},
+			Summary: "Resolve project ingestion credential for collector",
+			Description: "Private service-to-service endpoint. Requires X-SigNoz-Internal-Token.",
+			Request: new(struct { IngestionKey string `json:"ingestionKey"` }),
+			RequestContentType: "application/json",
+			Response: new(struct { OrgID string `json:"orgId"`; ProjectID string `json:"projectId"` }),
+			ResponseContentType: "application/json",
+			SuccessStatusCode: http.StatusOK,
+			ErrorStatusCodes: []int{http.StatusBadRequest, http.StatusUnauthorized},
+		},
+	)).Methods(http.MethodPost).GetError(); err != nil { return err }
+
 	return nil
 }
