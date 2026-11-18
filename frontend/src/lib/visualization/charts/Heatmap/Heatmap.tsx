@@ -67,6 +67,7 @@ export default function Heatmap(props: HeatmapChartProps): JSX.Element {
 		yAxisUnit,
 		decimalPrecision,
 		timezone,
+		tooltipSubject,
 		showVisualMap = true,
 		showLegend = true,
 		legendPosition = LegendPosition.BOTTOM,
@@ -252,6 +253,7 @@ export default function Heatmap(props: HeatmapChartProps): JSX.Element {
 				yAxisUnit={yAxisUnit}
 				decimalPrecision={boundaryPrecision}
 				timezone={timezone}
+				subject={tooltipSubject}
 				canPinTooltip={canPinTooltip}
 				renderTooltipFooter={renderTooltipFooter}
 			/>
@@ -266,6 +268,7 @@ export default function Heatmap(props: HeatmapChartProps): JSX.Element {
 			yAxisUnit,
 			boundaryPrecision,
 			timezone,
+			tooltipSubject,
 			canPinTooltip,
 			renderTooltipFooter,
 		],

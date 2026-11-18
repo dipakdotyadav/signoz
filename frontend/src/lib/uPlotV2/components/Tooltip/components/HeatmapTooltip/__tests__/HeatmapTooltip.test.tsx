@@ -112,6 +112,22 @@ describe('HeatmapTooltip — cell identity', () => {
 		expect(screen.getByTestId('heatmap-tooltip-count')).toHaveTextContent('455');
 	});
 
+	it('names what the grid measures when the panel supplies it', () => {
+		renderTooltip({ subject: 'Traces · duration_nano' });
+
+		expect(screen.getByTestId('heatmap-tooltip-subject')).toHaveTextContent(
+			'Traces · duration_nano',
+		);
+	});
+
+	it('leaves the subject out when there is none', () => {
+		renderTooltip();
+
+		expect(
+			screen.queryByTestId('heatmap-tooltip-subject'),
+		).not.toBeInTheDocument();
+	});
+
 	it('marks the surface as pinned so the border picks up the ring', () => {
 		renderTooltip({ isPinned: true });
 

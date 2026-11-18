@@ -38,6 +38,7 @@ export default function HeatmapTooltip({
 	series,
 	visibleGroups,
 	groupColor,
+	subject,
 	yAxisUnit,
 	decimalPrecision,
 	timezone,
@@ -138,6 +139,12 @@ export default function HeatmapTooltip({
 					</span>
 					{isPinned && <TooltipPinnedBadge />}
 				</div>
+
+				{subject && (
+					<div className={Styles.subject} data-testid="heatmap-tooltip-subject">
+						{subject}
+					</div>
+				)}
 
 				{filterLabel && (
 					<div
