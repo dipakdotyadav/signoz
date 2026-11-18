@@ -166,4 +166,6 @@ These route groups now use `AuthZ.RejectProjectHeaderForLegacyQuery` after the e
 - Requests without the project selector retain the legacy organization-wide behavior.
 - The middleware does not treat the header as authorization and does not create a tenant scope.
 
+The guard is applied to legacy v1 Prometheus query and dashboard-variable APIs; v3 query-range, autocomplete, filter suggestions and live-tail; v4 query-range and metric metadata; plus legacy service summaries, trace detail, dependency graph, error exploration, trace fields and span-percentile routes. The EE v4 query-range override is guarded as well.
+
 This is an explicit compatibility boundary, not full project support for legacy APIs. Remaining telemetry-returning legacy endpoints (for example service summaries, trace detail, dependency graphs, error exploration, and specialized integrations) still require route-by-route classification and either tenant-aware implementation or the same fail-closed guard before project-scoped access is advertised.
