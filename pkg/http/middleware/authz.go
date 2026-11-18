@@ -282,6 +282,23 @@ func (middleware *AuthZ) ProjectHeaderAccess(next http.HandlerFunc, verb coretyp
 	})
 }
 
+// RejectProjectHeaderForLegacyQuery prevents a project selector from silently
+// falling through to legacy query handlers that do not consume TenantScope.
+// Project-scoped execution must use an endpoint that explicitly enforces the
+// authenticated tenant scope (currently the v5 query APIs).
+func (middleware *AuthZ) RejectProjectHeaderForLegacyQuery(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if strings.TrimSpace(req.Header.Get("X-SigNoz-Project-ID")) != "" {
+			render.Error(rw, errors.NewInvalidInputf(
+				errors.CodeInvalidInput,
+				"project-scoped queries are not supported on this legacy endpoint; use /api/v5/query_range",
+			))
+			return
+		}
+		next(rw, req)
+	})
+}
+
 // CheckResourcesForUnscopedRequests preserves the organization-level telemetry
 // role gate for legacy requests. When ProjectHeaderAccess has already attached
 // a trusted tenant scope, the project permission check is the authorization
