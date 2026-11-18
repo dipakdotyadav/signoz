@@ -169,6 +169,6 @@ func NewModules(
 		SpanMapper:           spanMapper,
 		LLMPricingRule:       impllmpricingrule.NewModule(impllmpricingrule.NewStore(sqlstore), querier, telemetryMetadataStore, providerSettings),
 		Tag:                  tagModule,
-		Project:              implproject.NewModule(implproject.NewStore(sqlstore)),
+		Project:              implproject.NewModule(implproject.NewStore(sqlstore), authz, userGetter, serviceAccount),
 	}
 }
