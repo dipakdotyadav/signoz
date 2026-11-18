@@ -21,6 +21,7 @@ type projectRequest struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
 	Description string `json:"description"`
+	Status string `json:"status,omitempty"`
 }
 
 func orgID(r *http.Request) (valuer.UUID, error) {
@@ -61,7 +62,7 @@ func (h *handler) Update(w http.ResponseWriter, r *http.Request) {
 	item, err := h.module.Get(r.Context(), org, id)
 	if err != nil { render.Error(w, err); return }
 	item.Name, item.Slug, item.Description = req.Name, req.Slug, req.Description
-	if status := r.URL.Query().Get("status"); status != "" { item.Status = valuer.NewString(status) }
+	if req.Status != "" { item.Status = valuer.NewString(req.Status) }
 	item.UpdatedAt = time.Now()
 	if err := h.module.Update(r.Context(), org, item); err != nil { render.Error(w, err); return }
 	render.Success(w, http.StatusOK, item)
