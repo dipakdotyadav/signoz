@@ -123,3 +123,17 @@ func TestAddMetricMetadataTenantScopeUsesOrganizationBoundaryWithoutProject(t *t
 	require.Contains(t, args, orgID.String())
 }
 
+
+func TestAddMetricMetadataProjectScope(t *testing.T) {
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "11111111-1111-4111-8111-111111111111",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	sb := sqlbuilder.Select("*").From("signoz_metrics.distributed_metadata")
+	require.NoError(t, addMetricMetadataProjectScope(ctx, sb, "resource_attributes"))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "resource_attributes['signoz.org.id']")
+	require.Contains(t, query, "resource_attributes['signoz.project.id']")
+	require.Contains(t, args, "11111111-1111-4111-8111-111111111111")
+	require.Contains(t, args, "22222222-2222-4222-8222-222222222222")
+}
