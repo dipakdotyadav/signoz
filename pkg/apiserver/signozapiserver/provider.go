@@ -166,7 +166,6 @@ func NewFactory(
 			authzService,
 			orgHandler,
 			projectHandler,
-			projectHandler,
 			userHandler,
 			sessionHandler,
 			authDomainHandler,
