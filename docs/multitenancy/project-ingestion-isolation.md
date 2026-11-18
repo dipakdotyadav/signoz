@@ -187,3 +187,21 @@ The multi-tenant collector overlay also includes both tenant identifiers in the 
 Regression tests in the collector verify that reduced rows retain both tenant attributes and that otherwise-identical series from two projects retain distinct reduced fingerprints. These tests complement the query-builder storage tests, which verify that mandatory tenant predicates compile for traces, logs, and metrics. The metrics statement-builder regression also verifies that the tenant predicates are applied to both the raw time-series catalog and the reduced time-series catalog before joining their respective sample tables.
 
 This does not replace an end-to-end ClickHouse test: the full ingestion -> spanmetrics/reduction -> persisted rows -> V5 query path still needs to be exercised against a real ClickHouse instance.
+
+## Project-scoped metric metadata discovery
+
+Metric metadata is stored separately from metric samples. The Community Edition metadata store reads metric attribute keys and values from `signoz_metadata.distributed_attributes_metadata`, while intrinsic metric values, temporality/type, and last-seen information are read from raw, buffered, and reduced time-series catalogs.
+
+Project-scoped requests now apply the authenticated organization and project predicates to:
+- Metric attribute-key discovery
+- Metric attribute-value suggestions
+- Intrinsic metric-field value lookup across raw, buffer, and reduced catalogs
+- Metric temporality/type lookup across raw, buffer, and reduced catalogs
+- Metric last-seen lookup across raw and reduced catalogs
+- First-seen metric attribute metadata lookup
+
+The metadata table uses `resource_attributes`; time-series catalogs use `resource_attrs`. Both are filtered using the trusted `TenantScope` from request context. The caller-supplied organization must match the authenticated scope before metric metadata queries are built.
+
+This closes an important discovery side channel: a project can no longer learn another project's metric attribute keys, values, or metric lifecycle information through these metadata APIs merely because both projects belong to the same organization.
+
+Trace and log metadata discovery remains a separate storage-schema task. Their current tag-key/value tables do not yet carry explicit tenant columns, so project filtering cannot safely be inferred from the tag key or value alone.
