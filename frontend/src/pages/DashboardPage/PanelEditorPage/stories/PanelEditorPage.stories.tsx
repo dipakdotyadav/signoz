@@ -2,16 +2,23 @@ import type { ComponentType } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import ROUTES from 'constants/routes';
 import { renderAtRoute } from '@/storybook/renderAtRoute';
-import { screen, userEvent, within } from 'storybook/test';
 
 import { storyMocks } from '@/storybook/controls/defineStoryMocks';
-import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
-import { panelEditorMocks, savePanel } from './PanelEditorPage.stories.mocks';
+import {
+	panelEditorMocks,
+	type PanelEditorArgs,
+} from './PanelEditorPage.stories.mocks';
+import {
+	changeConfig,
+	expandConfigSections,
+	openAddColumn,
+	openTypeSwitcher,
+	pickHeatmapTracesField,
+	saveAndToast,
+} from './__story_mockdata__/panelEditor.play';
 
 import PanelEditorPage from '../PanelEditorPage';
-
-type PanelEditorArgs = PageStoryArgs<typeof panelEditorMocks>;
 
 const pageStory = storyMocks(panelEditorMocks, { layout: 'app' });
 
@@ -37,25 +44,6 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<PanelEditorArgs>;
-
-const expandConfigSections: Story['play'] = async ({ canvasElement }) => {
-	const canvas = within(canvasElement);
-
-	const headers = await canvas.findAllByTestId(
-		/^config-section-/,
-		{},
-		{ timeout: 10000 },
-	);
-	for (const header of headers) {
-		if (header.getAttribute('aria-expanded') === 'false') {
-			await userEvent.click(header);
-		}
-	}
-	(document.activeElement as HTMLElement | null)?.blur();
-	for (let el = headers[0].parentElement; el; el = el.parentElement) {
-		el.scrollTop = 0;
-	}
-};
 
 /**
  * Editing a saved time series panel: the live preview over the query builder on
@@ -91,14 +79,7 @@ export const ListPanel: Story = {
 /** Interaction: the list panel's add column menu, searching field keys. */
 export const ListPanelAddColumnOpen: Story = {
 	args: { panel: 'recent-logs' },
-	play: async (): Promise<void> => {
-		await userEvent.click(
-			await screen.findByTestId('list-columns-add', undefined, {
-				timeout: 10_000,
-			}),
-		);
-		await screen.findAllByTestId('list-columns-suggestion');
-	},
+	play: openAddColumn,
 };
 
 /** A table panel, with its column units and thresholds. */
@@ -136,18 +117,7 @@ export const Tooltips: Story = {
 
 /** The panel type browser, opened from the config pane to switch kinds. */
 export const ChangePanelType: Story = {
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-
-		await userEvent.click(
-			await canvas.findByTestId(
-				'panel-editor-v2-type-switcher',
-				{},
-				{ timeout: 10000 },
-			),
-		);
-		await screen.findByTestId('panel-type-switcher-drawer');
-	},
+	play: openTypeSwitcher,
 };
 
 /** A new time series panel's config pane, every section expanded. */
@@ -198,6 +168,15 @@ export const ConfigHeatmap: Story = {
 	play: expandConfigSections,
 };
 
+/**
+ * A new heatmap switched to traces: the aggregation becomes a picker of the
+ * signal's numeric fields, seeded with `duration_nano`.
+ */
+export const HeatmapTracesField: Story = {
+	args: { panel: 'new', newPanelKind: 'heatmap' },
+	play: pickHeatmapTracesField,
+};
+
 /** A new list panel's config pane, every section expanded. */
 export const ConfigList: Story = {
 	args: { panel: 'new', newPanelKind: 'list' },
@@ -215,17 +194,7 @@ export const ConfigText: Story = {
  * carry the unsaved-changes dot.
  */
 export const ConfigChanged: Story = {
-	play: async (context) => {
-		const canvas = within(context.canvasElement);
-
-		await expandConfigSections(context);
-		await userEvent.click(
-			await canvas.findByTestId('panel-editor-v2-log-scale-log'),
-		);
-		await userEvent.click(
-			await canvas.findByTestId('panel-editor-v2-line-style-dashed'),
-		);
-	},
+	play: changeConfig,
 };
 
 /**
@@ -234,16 +203,11 @@ export const ConfigChanged: Story = {
  * to see the button spin instead.
  */
 export const PanelSavedToast: Story = {
-	play: async ({ args }): Promise<void> => {
-		await savePanel();
-		if (args.panelSave === 'success') {
-			await screen.findByText('Panel saved');
-		}
-	},
+	play: saveAndToast,
 };
 
 /** Save changes on a new text panel, the editor kind with no query to bake in. */
 export const TextPanelSavedToast: Story = {
 	args: { panel: 'new', newPanelKind: 'text' },
-	play: PanelSavedToast.play,
+	play: saveAndToast,
 };
