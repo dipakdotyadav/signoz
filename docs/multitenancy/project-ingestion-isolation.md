@@ -116,3 +116,15 @@ Still outstanding before production:
 - Integrate the cloud gateway path against the same trusted-identity contract.
 
 The current code is an ingestion-authentication foundation, not yet a complete telemetry-isolation implementation.
+
+
+## Authenticated project query scope
+
+The API now has a reusable `ctxtypes.TenantScope` context value and two authorization middleware entry points:
+
+- `ProjectAccess` attaches the scope after authorizing the project identified by the route's `{id}`.
+- `ProjectHeaderAccess` attaches the scope after authorizing the project selected through `X-SigNoz-Project-ID`, for routes such as query-range APIs that do not carry a project path parameter.
+
+The header is a selector, not proof of identity. The middleware resolves the authenticated organization from claims and checks project access against the authorization service before creating the scope. Downstream code should use only `ctxtypes.TenantScopeFromContext`; it must not trust the raw header.
+
+Important: `ProjectHeaderAccess` is a building block and is not yet wired onto query routes. Do not advertise project-scoped query isolation until route activation, SQL enforcement for structured queries, PromQL, trace operators and raw ClickHouse SQL, and cross-project integration tests are complete. Raw ClickHouse SQL requires a dedicated policy (or restricted execution role); adding a resource predicate to builder queries does not secure arbitrary SQL.
