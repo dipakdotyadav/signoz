@@ -75,3 +75,29 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 	render.Success(w, http.StatusNoContent, nil)
 }
 
+
+func (h *handler) AddMember(w http.ResponseWriter, r *http.Request) {
+	org, err := orgID(r); if err != nil { render.Error(w, err); return }
+	id, err := valuer.NewUUID(mux.Vars(r)["id"]); if err != nil { render.Error(w, err); return }
+	member := new(types.ProjectMember)
+	if err := binding.JSON.BindBody(r.Body, member); err != nil { render.Error(w, err); return }
+	if err := h.module.AddMember(r.Context(), org, id, member); err != nil { render.Error(w, err); return }
+	render.Success(w, http.StatusNoContent, nil)
+}
+
+func (h *handler) RemoveMember(w http.ResponseWriter, r *http.Request) {
+	org, err := orgID(r); if err != nil { render.Error(w, err); return }
+	id, err := valuer.NewUUID(mux.Vars(r)["id"]); if err != nil { render.Error(w, err); return }
+	member := new(types.ProjectMember)
+	if err := binding.JSON.BindBody(r.Body, member); err != nil { render.Error(w, err); return }
+	if err := h.module.RemoveMember(r.Context(), org, id, member); err != nil { render.Error(w, err); return }
+	render.Success(w, http.StatusNoContent, nil)
+}
+
+func (h *handler) ListMembers(w http.ResponseWriter, r *http.Request) {
+	org, err := orgID(r); if err != nil { render.Error(w, err); return }
+	id, err := valuer.NewUUID(mux.Vars(r)["id"]); if err != nil { render.Error(w, err); return }
+	members, err := h.module.ListMembers(r.Context(), org, id)
+	if err != nil { render.Error(w, err); return }
+	render.Success(w, http.StatusOK, members)
+}
