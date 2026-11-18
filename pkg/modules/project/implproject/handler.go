@@ -1,7 +1,6 @@
 package implproject
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -75,4 +74,3 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 	render.Success(w, http.StatusNoContent, nil)
 }
 
-var _ = json.Valid
