@@ -1,7 +1,12 @@
 package implprojectingestionkey
 
 import (
+	"crypto/subtle"
+	"encoding/json"
+	"io"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/SigNoz/signoz/pkg/http/binding"
@@ -77,4 +82,47 @@ func (h *handler) Revoke(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	render.Success(w, http.StatusNoContent, nil)
+}
+
+type resolveInternalRequest struct {
+	IngestionKey string `json:"ingestionKey"`
+}
+
+type resolveInternalResponse struct {
+	OrgID     string `json:"orgId"`
+	ProjectID string `json:"projectId"`
+}
+
+// ResolveInternal is a private service-to-service endpoint used by the OTel
+// Collector authenticator. It intentionally returns only canonical tenant IDs.
+func (h *handler) ResolveInternal(w http.ResponseWriter, r *http.Request) {
+	expected := os.Getenv("SIGNOZ_INTERNAL_INGESTION_RESOLVER_TOKEN")
+	provided := r.Header.Get("X-SigNoz-Internal-Token")
+	if expected == "" || provided == "" || subtle.ConstantTimeCompare([]byte(expected), []byte(provided)) != 1 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	var req resolveInternalRequest
+	if err := json.Unmarshal(body, &req); err != nil || strings.TrimSpace(req.IngestionKey) == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	key, err := h.module.Resolve(r.Context(), req.IngestionKey)
+	if err != nil {
+		// Avoid disclosing whether a key exists, is expired, or has been revoked.
+		http.Error(w, "invalid ingestion credential", http.StatusUnauthorized)
+		return
+	}
+	render.Success(w, http.StatusOK, resolveInternalResponse{
+		OrgID: key.OrgID.String(),
+		ProjectID: key.ProjectID.String(),
+	})
 }
