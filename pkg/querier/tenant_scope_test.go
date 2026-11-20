@@ -88,6 +88,19 @@ func TestApplyTenantScopeScopesAllBuilderSignals(t *testing.T) {
 	requireTenantPredicates(t, ai.Filter)
 }
 
+func TestApplyTenantScopeRejectsProjectScopedAuditQueries(t *testing.T) {
+	ctx, orgID := tenantTestContext()
+	req := &qbtypes.QueryRangeRequest{
+		CompositeQuery: qbtypes.CompositeQuery{Queries: []qbtypes.QueryEnvelope{{
+			Type: qbtypes.QueryTypeBuilder,
+			Spec: qbtypes.QueryBuilderQuery[qbtypes.LogAggregation]{
+				Name: "audit", Signal: telemetrytypes.SignalLogs, Source: telemetrytypes.SourceAudit,
+			},
+		}}},
+	}
+	require.ErrorContains(t, applyTenantScope(ctx, orgID, req), "project-scoped audit queries are not yet supported")
+}
+
 func TestApplyTenantScopeRejectsUnscopedQueryLanguages(t *testing.T) {
 	ctx, orgID := tenantTestContext()
 	tests := []struct {
