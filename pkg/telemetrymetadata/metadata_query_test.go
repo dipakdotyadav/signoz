@@ -208,3 +208,35 @@ func TestAddLogMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
 	sb := sqlbuilder.Select("*").From("signoz_logs.distributed_tag_attributes_v3")
 	require.Error(t, addLogMetadataTenantScope(ctx, orgID, sb))
 }
+
+
+func TestAddLogBodyMetadataTenantScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	projectID := "22222222-2222-4222-8222-222222222222"
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID,
+	})
+	sb := sqlbuilder.Select("*").From("signoz_metadata.distributed_tenant_field_keys_v2")
+	require.NoError(t, addLogBodyMetadataTenantScope(ctx, orgID, sb))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "org_id")
+	require.Contains(t, query, "project_id")
+	require.Contains(t, args, orgID.String())
+	require.Contains(t, args, projectID)
+}
+
+func TestAddLogBodyMetadataTenantScopeRejectsMissingOrMismatchedScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	for name, ctx := range map[string]context.Context{
+		"missing project scope": context.Background(),
+		"mismatched organization": ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+			OrgID: "99999999-9999-4999-8999-999999999999",
+			ProjectID: "22222222-2222-4222-8222-222222222222",
+		}),
+	} {
+		t.Run(name, func(t *testing.T) {
+			sb := sqlbuilder.Select("*").From("signoz_metadata.distributed_tenant_field_keys_v2")
+			require.Error(t, addLogBodyMetadataTenantScope(ctx, orgID, sb))
+		})
+	}
+}
