@@ -492,9 +492,14 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		}
 	}
 
-	// Body JSON metadata is not yet tenant-keyed; keep it fail-closed for
-	// organization-scoped requests.
-	queryBodyTable = orgID.IsZero() && queryBodyTable && t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID))
+	// Legacy organization-wide requests read the shared field-key table.
+	// Project-scoped requests read only their tenant-keyed body metadata.
+	// Organization-only requests remain fail-closed because they do not identify
+	// a single project and must not aggregate field names across projects.
+	_, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
+	queryBodyTable = queryBodyTable &&
+		(orgID.IsZero() || hasProjectScope) &&
+		t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID))
 
 	// requestedFieldKeySelectors is the set of names the user explicitly asked for.
 	// Used to ensure a name that is both a parent path AND a directly requested field still surfaces
@@ -599,6 +604,21 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 			"field_data_type AS tag_data_type",
 			fmt.Sprintf("%d AS priority", getPriorityForContext(telemetrytypes.FieldContextBody)),
 		).From(fmt.Sprintf("%s.%s", DBName, FieldKeysTable))
+
+		if hasProjectScope {
+			scope, ok := ctxtypes.TenantScopeFromContext(ctx)
+			if !ok || scope.OrgID != orgID.String() {
+				return nil, false, errors.NewInvalidInputf(errors.CodeInvalidInput, "project scope is missing or does not match log metadata organization")
+			}
+			sb = sqlbuilder.Select(
+				"field_name AS tag_key",
+				fmt.Sprintf("'%s' AS tag_type", telemetrytypes.FieldContextBody.TagType()),
+				"field_data_type AS tag_data_type",
+				fmt.Sprintf("%d AS priority", getPriorityForContext(telemetrytypes.FieldContextBody)),
+			).From(fmt.Sprintf("%s.%s", DBName, TenantFieldKeysTable))
+			sb.Where(sb.E("org_id", scope.OrgID))
+			sb.Where(sb.E("project_id", scope.ProjectID))
+		}
 
 		sb.Where(sb.E("signal", telemetrytypes.SignalLogs.StringValue()))
 		sb.Where(sb.E("field_context", telemetrytypes.FieldContextBody.StringValue()))
@@ -740,15 +760,29 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		keys = append(keys, &field)
 	}
 
-	// enrich body keys with promoted paths, indexes, and JSON access plans
+	// Shared promoted-path, skip-index, and column-evolution metadata can
+	// reveal paths from other projects. For project-scoped requests, build only
+	// the JSON access plans from the tenant-filtered field/type rows above.
 	if t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID)) {
-		if err := t.enrichJSONKeys(ctx, fieldKeySelectors, keys, parentTypes); err != nil {
+		if hasProjectScope {
+			bodyKeys := make([]*telemetrytypes.TelemetryFieldKey, 0, len(keys))
+			for _, key := range keys {
+				if key.FieldContext == telemetrytypes.FieldContextBody {
+					bodyKeys = append(bodyKeys, key)
+				}
+			}
+			if err := t.buildJSONPlans(bodyKeys, parentTypes); err != nil {
+				return nil, false, err
+			}
+		} else if err := t.enrichJSONKeys(ctx, fieldKeySelectors, keys, parentTypes); err != nil {
 			return nil, false, err
 		}
 	}
 
-	if err := t.updateColumnEvolutionMetadataForKeys(ctx, keys); err != nil {
-		return nil, false, err
+	if !hasProjectScope {
+		if err := t.updateColumnEvolutionMetadataForKeys(ctx, keys); err != nil {
+			return nil, false, err
+		}
 	}
 
 	return keys, complete, nil
