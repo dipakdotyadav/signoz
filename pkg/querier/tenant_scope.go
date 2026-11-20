@@ -62,6 +62,12 @@ func applyTenantScope(ctx context.Context, orgID valuer.UUID, req *qbtypes.Query
 				spec.Filter = appendTenantFilter(spec.Filter, tenantFilter)
 				env.Spec = spec
 			case qbtypes.QueryBuilderQuery[qbtypes.MetricAggregation]:
+				// Meter samples use a separate internal pipeline. Until its
+				// ingestion path guarantees authenticated tenant dimensions,
+				// do not expose it through project-scoped query execution.
+				if spec.Source == telemetrytypes.SourceMeter {
+					return errors.NewInvalidInputf(errors.CodeInvalidInput, "project-scoped meter queries are not yet supported")
+				}
 				spec.Filter = appendTenantFilter(spec.Filter, tenantFilter)
 				env.Spec = spec
 			default:
