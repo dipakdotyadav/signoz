@@ -11,7 +11,6 @@ import (
 	"github.com/SigNoz/signoz/pkg/errors"
 	grammar "github.com/SigNoz/signoz/pkg/parser/filterquery/grammar"
 	"github.com/SigNoz/signoz/pkg/semconv"
-	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	qbtypes "github.com/SigNoz/signoz/pkg/types/querybuildertypes/querybuildertypesv5"
 	"github.com/SigNoz/signoz/pkg/types/telemetrytypes"
 	"github.com/antlr4-go/antlr/v4"
@@ -90,32 +89,8 @@ func (p PreparedWhereClause) IsEmpty() bool {
 	return p.WhereClause == nil
 }
 
-// tenantScopedFilter adds predicates from authenticated request context. These
-// predicates are deliberately generated server-side rather than accepted from
-// the client filter, so OR expressions cannot bypass the tenant boundary.
-func tenantScopedFilter(ctx context.Context, query string) string {
-	scope, ok := ctxtypes.TenantScopeFromContext(ctx)
-	if !ok {
-		return query
-	}
-
-	// TenantScope is populated by authentication middleware with canonical UUIDs.
-	// Keep quoting defensive in case a future identity provider changes formats.
-	quote := func(value string) string {
-		return "'" + strings.ReplaceAll(value, "'", "\\'") + "'"
-	}
-	tenantFilter := "resource.signoz.org.id = " + quote(scope.OrgID) +
-		" AND resource.signoz.project.id = " + quote(scope.ProjectID)
-	if strings.TrimSpace(query) == "" {
-		return tenantFilter
-	}
-	return "(" + query + ") AND (" + tenantFilter + ")"
-}
-
 // PrepareWhereClause generates a ClickHouse compatible WHERE clause from the filter query.
 func PrepareWhereClause(query string, opts FilterExprVisitorOpts) (PreparedWhereClause, error) {
-	query = tenantScopedFilter(opts.Context, query)
-
 	// Setup the ANTLR parsing pipeline
 	input := antlr.NewInputStream(query)
 	lexer := grammar.NewFilterQueryLexer(input)
