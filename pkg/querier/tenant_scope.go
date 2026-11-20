@@ -53,6 +53,12 @@ func applyTenantScope(ctx context.Context, orgID valuer.UUID, req *qbtypes.Query
 				spec.Filter = appendTenantFilter(spec.Filter, tenantFilter)
 				env.Spec = spec
 			case qbtypes.QueryBuilderQuery[qbtypes.LogAggregation]:
+				// Audit events use a separate storage pipeline and have not yet
+				// been migrated to authenticated project dimensions. Do not let
+				// a resource-attribute predicate imply isolation there.
+				if spec.Source == telemetrytypes.SourceAudit {
+					return errors.NewInvalidInputf(errors.CodeInvalidInput, "project-scoped audit queries are not yet supported")
+				}
 				spec.Filter = appendTenantFilter(spec.Filter, tenantFilter)
 				env.Spec = spec
 			case qbtypes.QueryBuilderQuery[qbtypes.MetricAggregation]:
