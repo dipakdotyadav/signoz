@@ -441,6 +441,15 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		instrumentationtypes.CodeFunctionName: "getLogsKeys",
 	})
 
+	// Validate the authenticated organization/project scope before constructing
+	// the UNION queries below. Each tenant-key table arm applies the same scope.
+	if !orgID.IsZero() {
+		scopeCheck := sqlbuilder.Select("1")
+		if err := addLogMetadataTenantScope(ctx, orgID, scopeCheck); err != nil {
+			return nil, false, err
+		}
+	}
+
 	if len(fieldKeySelectors) == 0 {
 		return nil, true, nil
 	}
