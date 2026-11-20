@@ -222,6 +222,16 @@ func (t *telemetryMetaStore) tracesTblStatementToFieldKeys(ctx context.Context) 
 
 // getTracesKeys returns the keys from the spans that match the field selection criteria.
 
+func addLogBodyMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
+	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
+	if !hasProjectScope || orgID.IsZero() || scope.OrgID != orgID.String() || strings.TrimSpace(scope.ProjectID) == "" {
+		return errors.NewInvalidInputf(errors.CodeInvalidInput, "valid project scope is required for tenant JSON body metadata")
+	}
+	sb.Where(sb.E("org_id", scope.OrgID))
+	sb.Where(sb.E("project_id", scope.ProjectID))
+	return nil
+}
+
 func addLogMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
 	if orgID.IsZero() {
 		return nil
@@ -606,18 +616,15 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		).From(fmt.Sprintf("%s.%s", DBName, FieldKeysTable))
 
 		if hasProjectScope {
-			scope, ok := ctxtypes.TenantScopeFromContext(ctx)
-			if !ok || scope.OrgID != orgID.String() {
-				return nil, false, errors.NewInvalidInputf(errors.CodeInvalidInput, "project scope is missing or does not match log metadata organization")
-			}
 			sb = sqlbuilder.Select(
 				"field_name AS tag_key",
 				fmt.Sprintf("'%s' AS tag_type", telemetrytypes.FieldContextBody.TagType()),
 				"field_data_type AS tag_data_type",
 				fmt.Sprintf("%d AS priority", getPriorityForContext(telemetrytypes.FieldContextBody)),
 			).From(fmt.Sprintf("%s.%s", DBName, TenantFieldKeysTable))
-			sb.Where(sb.E("org_id", scope.OrgID))
-			sb.Where(sb.E("project_id", scope.ProjectID))
+			if err := addLogBodyMetadataTenantScope(ctx, orgID, sb); err != nil {
+				return nil, false, err
+			}
 		}
 
 		sb.Where(sb.E("signal", telemetrytypes.SignalLogs.StringValue()))
