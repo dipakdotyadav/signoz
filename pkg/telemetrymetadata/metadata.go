@@ -55,8 +55,11 @@ type telemetryMetaStore struct {
 	meterFieldsTblName             string
 	logsDBName                     string
 	logsFieldsTblName              string
+	tenantLogsFieldsTblName        string
 	logAttributeKeysTblName        string
 	logResourceKeysTblName         string
+	tenantLogAttributeKeysTblName  string
+	tenantLogResourceKeysTblName   string
 	logsV2TblName                  string
 	auditDBName                    string
 	auditLogsTblName               string
@@ -93,8 +96,11 @@ func NewTelemetryMetaStore(
 		logsDBName:                     logstelemetryschema.DBName,
 		logsV2TblName:                  logstelemetryschema.LogsV2TableName,
 		logsFieldsTblName:              logstelemetryschema.TagAttributesV2TableName,
+		tenantLogsFieldsTblName:        logstelemetryschema.TagAttributesV3TableName,
 		logAttributeKeysTblName:        logstelemetryschema.LogAttributeKeysTblName,
 		logResourceKeysTblName:         logstelemetryschema.LogResourceKeysTblName,
+		tenantLogAttributeKeysTblName:  logstelemetryschema.LogAttributeKeysV2TblName,
+		tenantLogResourceKeysTblName:   logstelemetryschema.LogResourceKeysV2TblName,
 		auditDBName:                    audittelemetryschema.DBName,
 		auditLogsTblName:               audittelemetryschema.AuditLogsTableName,
 		auditFieldsTblName:             audittelemetryschema.TagAttributesTableName,
@@ -215,6 +221,21 @@ func (t *telemetryMetaStore) tracesTblStatementToFieldKeys(ctx context.Context) 
 }
 
 // getTracesKeys returns the keys from the spans that match the field selection criteria.
+
+func addLogMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
+	if orgID.IsZero() {
+		return nil
+	}
+	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
+	if hasProjectScope && scope.OrgID != orgID.String() {
+		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match log metadata request")
+	}
+	sb.Where(sb.E("org_id", orgID.String()))
+	if hasProjectScope {
+		sb.Where(sb.E("project_id", scope.ProjectID))
+	}
+	return nil
+}
 
 func addTraceMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
 	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
@@ -420,24 +441,21 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		instrumentationtypes.CodeFunctionName: "getLogsKeys",
 	})
 
-	// Log tag/key tables are not tenant-keyed yet. Do not expose their
-	// cross-tenant contents through an organization-scoped metadata request.
-	if !orgID.IsZero() {
-		return nil, true, nil
-	}
-
 	if len(fieldKeySelectors) == 0 {
 		return nil, true, nil
 	}
 
-	// pre-fetch the materialised keys from the logs table
-	matKeys, err := t.logsTblStatementToFieldKeys(ctx)
-	if err != nil {
-		return nil, false, err
-	}
+	// Materialised log columns are global. Only include them for unscoped
+	// requests; tenant-scoped requests read exclusively from tenant-keyed tables.
 	mapOfKeys := make(map[string]*telemetrytypes.TelemetryFieldKey)
-	for _, key := range matKeys {
-		mapOfKeys[key.Name+";"+key.FieldContext.StringValue()+";"+key.FieldDataType.StringValue()] = key
+	if orgID.IsZero() {
+		matKeys, err := t.logsTblStatementToFieldKeys(ctx)
+		if err != nil {
+			return nil, false, err
+		}
+		for _, key := range matKeys {
+			mapOfKeys[key.Name+";"+key.FieldContext.StringValue()+";"+key.FieldDataType.StringValue()] = key
+		}
 	}
 
 	// queries for both attribute and resource keys tables
@@ -465,8 +483,9 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 		}
 	}
 
-	// body keys are gated behind the feature flag
-	queryBodyTable = queryBodyTable && t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID))
+	// Body JSON metadata is not yet tenant-keyed; keep it fail-closed for
+	// organization-scoped requests.
+	queryBodyTable = orgID.IsZero() && queryBodyTable && t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID))
 
 	// requestedFieldKeySelectors is the set of names the user explicitly asked for.
 	// Used to ensure a name that is both a parent path AND a directly requested field still surfaces
@@ -511,6 +530,11 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 			fmt.Sprintf("%d AS priority", getPriorityForContext(fieldContext)),
 		).From(tblName)
 
+		if !orgID.IsZero() {
+			if err := addLogMetadataTenantScope(ctx, orgID, sb); err != nil {
+				return
+			}
+		}
 		conds := []string{}
 		for _, sel := range fieldKeySelectors {
 			// Include this selector if:
@@ -542,10 +566,18 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 	}
 
 	if queryAttributeTable {
-		addTagTableQuery(t.logsDBName+"."+t.logAttributeKeysTblName, telemetrytypes.FieldContextAttribute)
+		tableName := t.logAttributeKeysTblName
+		if !orgID.IsZero() {
+			tableName = t.tenantLogAttributeKeysTblName
+		}
+		addTagTableQuery(t.logsDBName+"."+tableName, telemetrytypes.FieldContextAttribute)
 	}
 	if queryResourceTable {
-		addTagTableQuery(t.logsDBName+"."+t.logResourceKeysTblName, telemetrytypes.FieldContextResource)
+		tableName := t.logResourceKeysTblName
+		if !orgID.IsZero() {
+			tableName = t.tenantLogResourceKeysTblName
+		}
+		addTagTableQuery(t.logsDBName+"."+tableName, telemetrytypes.FieldContextResource)
 	}
 
 	// body context uses a different table/schema (field_name, field_data_type) and requires
@@ -1604,16 +1636,15 @@ func (t *telemetryMetaStore) getLogFieldValues(ctx context.Context, orgID valuer
 		instrumentationtypes.CodeFunctionName: "getLogFieldValues",
 	})
 
-	// Log tag/value tables are not tenant-keyed yet. Fail closed for
-	// organization-scoped metadata requests until the log storage migration lands.
-	if !orgID.IsZero() {
-		return &telemetrytypes.TelemetryFieldValues{}, true, nil
-	}
-
 	knownBool := isKnownBoolField(fieldValueSelector, logstelemetryschema.IntrinsicFields)
 	names := t.familyValueNames(ctx, orgID, telemetrytypes.SignalLogs, fieldValueSelector)
+	// Tenant-scoped requests read only from the tenant-keyed tag-value table.
+	tableName := t.logsFieldsTblName
+	if !orgID.IsZero() {
+		tableName = t.tenantLogsFieldsTblName
+	}
 	// unix_milli is the hour the log was ingested, not the log's own timestamp
-	return t.getTagTableValues(ctx, orgID, t.logsDBName+"."+t.logsFieldsTblName, fieldValueSelector, names, knownBool)
+	return t.getTagTableValues(ctx, orgID, t.logsDBName+"."+tableName, fieldValueSelector, names, knownBool)
 }
 
 // tagKeyCondition matches the requested key, or every spelling of its
@@ -1642,6 +1673,11 @@ func (t *telemetryMetaStore) tagTableHasBoolRows(ctx context.Context, orgID valu
 	sb := sqlbuilder.Select("1").From(table)
 	if strings.HasPrefix(table, t.tracesDBName+".") {
 		if err := addTraceMetadataTenantScope(ctx, orgID, sb); err != nil {
+			return false, err
+		}
+	}
+	if table == t.logsDBName+"."+t.tenantLogsFieldsTblName {
+		if err := addLogMetadataTenantScope(ctx, orgID, sb); err != nil {
 			return false, err
 		}
 	}
@@ -1690,6 +1726,11 @@ func (t *telemetryMetaStore) getTagTableValues(ctx context.Context, orgID valuer
 	sb := sqlbuilder.Select("DISTINCT string_value, number_value").From(table)
 	if strings.HasPrefix(table, t.tracesDBName+".") {
 		if err := addTraceMetadataTenantScope(ctx, orgID, sb); err != nil {
+			return nil, false, err
+		}
+	}
+	if table == t.logsDBName+"."+t.tenantLogsFieldsTblName {
+		if err := addLogMetadataTenantScope(ctx, orgID, sb); err != nil {
 			return nil, false, err
 		}
 	}
