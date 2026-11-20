@@ -772,10 +772,18 @@ func (t *telemetryMetaStore) getLogsKeys(ctx context.Context, orgID valuer.UUID,
 	// the JSON access plans from the tenant-filtered field/type rows above.
 	if t.fl.BooleanOrEmpty(ctx, flagger.FeatureUseJSONBody, featuretypes.NewFlaggerEvaluationContext(orgID)) {
 		if hasProjectScope {
+			exactBodySelectors := make(map[string]struct{})
+			for _, selector := range fieldKeySelectors {
+				if selector.SelectorMatchType == telemetrytypes.FieldSelectorMatchTypeExact {
+					exactBodySelectors[selector.Name] = struct{}{}
+				}
+			}
 			bodyKeys := make([]*telemetrytypes.TelemetryFieldKey, 0, len(keys))
 			for _, key := range keys {
 				if key.FieldContext == telemetrytypes.FieldContextBody {
-					bodyKeys = append(bodyKeys, key)
+					if _, requestedExactly := exactBodySelectors[key.Name]; requestedExactly {
+						bodyKeys = append(bodyKeys, key)
+					}
 				}
 			}
 			if err := t.buildJSONPlans(bodyKeys, parentTypes); err != nil {
