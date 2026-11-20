@@ -174,26 +174,37 @@ func TestAddTraceMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
 }
 
 
-func TestLogMetadataDiscoveryFailsClosedForOrganizationScopedRequests(t *testing.T) {
+func TestAddLogMetadataTenantScope(t *testing.T) {
 	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
-	metadata := NewTelemetryMetaStore(
-		instrumentationtest.New().ToProviderSettings(),
-		nil,
-		flaggertest.New(t),
-	).(*telemetryMetaStore)
-
-	keys, complete, err := metadata.getLogsKeys(context.Background(), orgID, []*telemetrytypes.FieldKeySelector{{
-		Name: "service.name", Signal: telemetrytypes.SignalLogs,
-	}})
-	require.NoError(t, err)
-	require.True(t, complete)
-	require.Empty(t, keys)
-
-	values, valuesComplete, err := metadata.getLogFieldValues(context.Background(), orgID, &telemetrytypes.FieldValueSelector{
-		Name: "service.name", Signal: telemetrytypes.SignalLogs,
+	projectID := "22222222-2222-4222-8222-222222222222"
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: orgID.String(), ProjectID: projectID,
 	})
-	require.NoError(t, err)
-	require.True(t, valuesComplete)
-	require.Empty(t, values.StringValues)
-	require.Empty(t, values.NumberValues)
+	sb := sqlbuilder.Select("*").From("signoz_logs.distributed_tag_attributes_v3")
+	require.NoError(t, addLogMetadataTenantScope(ctx, orgID, sb))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "org_id")
+	require.Contains(t, query, "project_id")
+	require.Contains(t, args, orgID.String())
+	require.Contains(t, args, projectID)
+}
+
+func TestAddLogMetadataTenantScopeOrganizationOnly(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	sb := sqlbuilder.Select("*").From("signoz_logs.distributed_tag_attributes_v3")
+	require.NoError(t, addLogMetadataTenantScope(context.Background(), orgID, sb))
+	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	require.Contains(t, query, "org_id")
+	require.NotContains(t, query, "project_id")
+	require.Contains(t, args, orgID.String())
+}
+
+func TestAddLogMetadataTenantScopeRejectsOrganizationMismatch(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "99999999-9999-4999-8999-999999999999",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	sb := sqlbuilder.Select("*").From("signoz_logs.distributed_tag_attributes_v3")
+	require.Error(t, addLogMetadataTenantScope(ctx, orgID, sb))
 }
