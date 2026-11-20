@@ -52,6 +52,25 @@ func TestApplyTenantScopeAddsMandatoryPredicates(t *testing.T) {
 	)
 }
 
+func TestApplyTenantScopeGroupsExistingOrFilterBeforeTenantPredicates(t *testing.T) {
+	ctx, orgID := tenantTestContext()
+	req := &qbtypes.QueryRangeRequest{
+		CompositeQuery: qbtypes.CompositeQuery{Queries: []qbtypes.QueryEnvelope{{
+			Type: qbtypes.QueryTypeBuilder,
+			Spec: qbtypes.QueryBuilderQuery[qbtypes.LogAggregation]{
+				Name: "A",
+				Filter: &qbtypes.Filter{Expression: "severity_text = 'ERROR' OR severity_text = 'FATAL'"},
+			},
+		}}},
+	}
+	require.NoError(t, applyTenantScope(ctx, orgID, req))
+	spec := req.CompositeQuery.Queries[0].Spec.(qbtypes.QueryBuilderQuery[qbtypes.LogAggregation])
+	require.Equal(t,
+		"(severity_text = 'ERROR' OR severity_text = 'FATAL') AND (resource.signoz.org.id = '"+testOrgID+"' AND resource.signoz.project.id = '"+testProjectID+"')",
+		spec.Filter.Expression,
+	)
+}
+
 func TestApplyTenantScopeScopesAllBuilderSignals(t *testing.T) {
 	ctx, orgID := tenantTestContext()
 	req := &qbtypes.QueryRangeRequest{
