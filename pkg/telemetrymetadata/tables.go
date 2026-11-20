@@ -8,6 +8,7 @@ const (
 	AttributesMetadataLocalTableName = "attributes_metadata"
 	ColumnEvolutionMetadataTableName = "distributed_column_evolution_metadata"
 	FieldKeysTable                   = otelconst.DistributedFieldKeysTable
+	TenantFieldKeysTable             = "distributed_tenant_field_keys_v2"
 	// Column Evolution table stores promoted paths as (signal, column_name, field_context, field_name); see signoz-otel-collector metadata_migrations.
 	PromotedPathsTableName = "distributed_column_evolution_metadata"
 	SkipIndexTableName     = "system.data_skipping_indices"
