@@ -2858,6 +2858,19 @@ func (aH *APIHandler) CreateLogsPipeline(w http.ResponseWriter, r *http.Request)
 	aH.Respond(w, res)
 }
 
+// rejectUnsupportedProjectScopedAutocomplete keeps project-aware autocomplete
+// limited to log metadata until trace and metric metadata tables are tenant-aware.
+func rejectUnsupportedProjectScopedAutocomplete(w http.ResponseWriter, r *http.Request, source v3.DataSource) bool {
+	if _, scoped := ctxtypes.TenantScopeFromContext(r.Context()); scoped && source != v3.DataSourceLogs {
+		RespondError(w, model.BadRequest(fmt.Errorf(
+			"project-scoped autocomplete is currently supported only for logs; %s metadata remains organization-scoped",
+			source,
+		)), nil)
+		return true
+	}
+	return false
+}
+
 func (aH *APIHandler) autocompleteAggregateAttributes(w http.ResponseWriter, r *http.Request) {
 	claims, err := authtypes.ClaimsFromContext(r.Context())
 	if err != nil {
@@ -2875,6 +2888,10 @@ func (aH *APIHandler) autocompleteAggregateAttributes(w http.ResponseWriter, r *
 
 	if err != nil {
 		RespondError(w, &model.ApiError{Typ: model.ErrorBadData, Err: err}, nil)
+		return
+	}
+
+	if rejectUnsupportedProjectScopedAutocomplete(w, r, req.DataSource) {
 		return
 	}
 
@@ -2940,6 +2957,10 @@ func (aH *APIHandler) autoCompleteAttributeKeys(w http.ResponseWriter, r *http.R
 	}
 	orgID := valuer.MustNewUUID(claims.OrgID)
 
+	if rejectUnsupportedProjectScopedAutocomplete(w, r, req.DataSource) {
+		return
+	}
+
 	switch req.DataSource {
 	case v3.DataSourceMetrics:
 		response, err = aH.reader.GetMetricAttributeKeys(r.Context(), orgID, req)
@@ -2978,6 +2999,10 @@ func (aH *APIHandler) autoCompleteAttributeValues(w http.ResponseWriter, r *http
 	}
 	orgID := valuer.MustNewUUID(claims.OrgID)
 
+	if rejectUnsupportedProjectScopedAutocomplete(w, r, req.DataSource) {
+		return
+	}
+
 	switch req.DataSource {
 	case v3.DataSourceMetrics:
 		response, err = aH.reader.GetMetricAttributeValues(r.Context(), orgID, req)
@@ -3013,6 +3038,10 @@ func (aH *APIHandler) autoCompleteAttributeValuesPost(w http.ResponseWriter, r *
 		return
 	}
 	orgID := valuer.MustNewUUID(claims.OrgID)
+
+	if rejectUnsupportedProjectScopedAutocomplete(w, r, req.DataSource) {
+		return
+	}
 
 	switch req.DataSource {
 	case v3.DataSourceMetrics:
