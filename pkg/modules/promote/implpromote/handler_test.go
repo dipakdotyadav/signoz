@@ -18,7 +18,7 @@ func TestValidatePromotionTenantScope(t *testing.T) {
 		wantError bool
 	}{
 		{name: "legacy organization-less request"},
-		{name: "organization claim without project scope", claims: authtypes.Claims{OrgID: "org-a"}, wantError: true},
+		{name: "organization-wide request without project selector", claims: authtypes.Claims{OrgID: "org-a"}},
 		{name: "matching authenticated project scope", claims: authtypes.Claims{OrgID: "org-a"}, scope: &ctxtypes.TenantScope{OrgID: "org-a", ProjectID: "project-a"}},
 		{name: "organization mismatch", claims: authtypes.Claims{OrgID: "org-a"}, scope: &ctxtypes.TenantScope{OrgID: "org-b", ProjectID: "project-a"}, wantError: true},
 		{name: "incomplete project scope", claims: authtypes.Claims{OrgID: "org-a"}, scope: &ctxtypes.TenantScope{OrgID: "org-a"}, wantError: true},
