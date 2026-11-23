@@ -237,8 +237,13 @@ func addLogMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbu
 		return nil
 	}
 	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
-	if hasProjectScope && scope.OrgID != orgID.String() {
-		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match log metadata request")
+	if hasProjectScope {
+		if !scope.Valid() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "complete organization and project scope is required for log metadata")
+		}
+		if scope.OrgID != orgID.String() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match log metadata request")
+		}
 	}
 	sb.Where(sb.E("org_id", orgID.String()))
 	if hasProjectScope {
@@ -249,8 +254,13 @@ func addLogMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbu
 
 func addTraceMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder) error {
 	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
-	if hasProjectScope && scope.OrgID != orgID.String() {
-		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match trace metadata request")
+	if hasProjectScope {
+		if !scope.Valid() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "complete organization and project scope is required for trace metadata")
+		}
+		if scope.OrgID != orgID.String() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match trace metadata request")
+		}
 	}
 	sb.Where(sb.E("org_id", orgID.String()))
 	if hasProjectScope {
