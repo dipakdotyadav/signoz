@@ -32,6 +32,16 @@ func TestTenantTagMetadataScope(t *testing.T) {
 		}, args)
 	})
 
+
+	t.Run("incomplete authenticated scope fails closed", func(t *testing.T) {
+		ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+			OrgID: "11111111-1111-4111-8111-111111111111",
+		})
+		_, _, scoped, err := tenantTagMetadataScope(ctx, 1)
+		require.True(t, scoped)
+		require.Error(t, err)
+	})
+
 	t.Run("invalid authenticated identity fails closed", func(t *testing.T) {
 		ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
 			OrgID: "not-an-org",
