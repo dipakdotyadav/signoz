@@ -12,7 +12,10 @@ import (
 )
 
 func (provider *provider) addPromoteRoutes(router *mux.Router) error {
-	if err := router.Handle("/api/v1/promoted_paths", handler.New(provider.authzMiddleware.CheckResources(provider.promoteHandler.PromotePaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName), handler.OpenAPIDef{
+	if err := router.Handle("/api/v1/promoted_paths", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(
+		provider.authzMiddleware.CheckResourcesForUnscopedRequests(provider.promoteHandler.PromotePaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName),
+		coretypes.VerbUpdate,
+	), handler.OpenAPIDef{
 		ID:                 "PromotePaths",
 		Tags:               []string{"promote"},
 		Summary:            "Promote paths",
@@ -62,7 +65,10 @@ func (provider *provider) addPromoteRoutes(router *mux.Router) error {
 		return err
 	}
 
-	if err := router.Handle("/api/v1/promoted_paths", handler.New(provider.authzMiddleware.CheckResources(provider.promoteHandler.ListPromotedPaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName), handler.OpenAPIDef{
+	if err := router.Handle("/api/v1/promoted_paths", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(
+		provider.authzMiddleware.CheckResourcesForUnscopedRequests(provider.promoteHandler.ListPromotedPaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName, authtypes.SigNozViewerRoleName),
+		coretypes.VerbRead,
+	), handler.OpenAPIDef{
 		ID:                  "ListPromotedPaths",
 		Tags:                []string{"promote"},
 		Summary:             "List promoted paths",
@@ -84,7 +90,10 @@ func (provider *provider) addPromoteRoutes(router *mux.Router) error {
 		return err
 	}
 
-	if err := router.Handle("/api/v1/promoted_paths/materialized", handler.New(provider.authzMiddleware.CheckResources(provider.promoteHandler.IndexMaterializedPaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName), handler.OpenAPIDef{
+	if err := router.Handle("/api/v1/promoted_paths/materialized", handler.New(provider.authzMiddleware.ProjectHeaderAccessIfPresent(
+		provider.authzMiddleware.CheckResourcesForUnscopedRequests(provider.promoteHandler.IndexMaterializedPaths, authtypes.SigNozAdminRoleName, authtypes.SigNozEditorRoleName),
+		coretypes.VerbUpdate,
+	), handler.OpenAPIDef{
 		ID:                  "IndexMaterializedPaths",
 		Tags:                []string{"promote"},
 		Summary:             "Index materialized paths",
