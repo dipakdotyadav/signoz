@@ -17,11 +17,12 @@ func TestTenantScopeContextRoundTrip(t *testing.T) {
 	require.Equal(t, TenantScope{OrgID: "org-1", ProjectID: "project-1"}, scope)
 }
 
-func TestTenantScopeContextRejectsMissingOrIncompleteScope(t *testing.T) {
+func TestTenantScopeContextDistinguishesMissingAndIncompleteScope(t *testing.T) {
 	_, ok := TenantScopeFromContext(context.Background())
 	require.False(t, ok)
 
 	ctx := NewContextWithTenantScope(context.Background(), TenantScope{OrgID: "org-1"})
-	_, ok = TenantScopeFromContext(ctx)
-	require.False(t, ok)
+	scope, ok := TenantScopeFromContext(ctx)
+	require.True(t, ok, "a present but incomplete scope must remain visible to fail-closed consumers")
+	require.False(t, scope.Valid())
 }
