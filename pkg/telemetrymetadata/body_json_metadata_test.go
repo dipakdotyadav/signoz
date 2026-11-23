@@ -11,6 +11,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/telemetryschema/logstelemetryschema"
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/promotetypes"
+	"github.com/SigNoz/signoz/pkg/types/telemetrytypes"
 	"github.com/stretchr/testify/require"
 )
 
@@ -210,4 +211,37 @@ func TestTenantPromotionScope(t *testing.T) {
 	_, scoped, err = tenantPromotionScope(invalidCtx)
 	require.True(t, scoped)
 	require.Error(t, err, "an incomplete scope must fail closed")
+}
+
+
+func TestBuildGetPromotedPathsQueryTenantIsolation(t *testing.T) {
+	entry := promotetypes.NewTracesAttributesTarget().Entry
+	scopeA := &ctxtypes.TenantScope{
+		OrgID: "11111111-1111-4111-8111-111111111111",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	}
+	scopeB := &ctxtypes.TenantScope{
+		OrgID: "11111111-1111-4111-8111-111111111111",
+		ProjectID: "33333333-3333-4333-8333-333333333333",
+	}
+
+	queryA, argsA := buildGetPromotedPathsQuery(entry, scopeA, "http.method", "http.status"+telemetrytypes.ArraySep+"0")
+	queryB, argsB := buildGetPromotedPathsQuery(entry, scopeB, "http.method", "http.status"+telemetrytypes.ArraySep+"0")
+	legacyQuery, legacyArgs := buildGetPromotedPathsQuery(entry, nil, "http.method")
+
+	require.Contains(t, queryA, TenantPromotedPathsTableName)
+	require.Contains(t, queryA, "org_id")
+	require.Contains(t, queryA, "project_id")
+	require.NotContains(t, queryA, PromotedPathsTableName+" WHERE signal")
+	require.NotEqual(t, argsA, argsB, "project A and project B must produce different tenant query arguments")
+	require.Contains(t, argsA, scopeA.OrgID)
+	require.Contains(t, argsA, scopeA.ProjectID)
+	require.NotContains(t, argsA, scopeB.ProjectID)
+	require.Contains(t, argsA, "http.status")
+	require.NotContains(t, argsA, "http.status"+telemetrytypes.ArraySep+"0")
+
+	require.Contains(t, legacyQuery, PromotedPathsTableName)
+	require.NotContains(t, legacyQuery, TenantPromotedPathsTableName)
+	require.NotContains(t, legacyQuery, "project_id")
+	require.NotContains(t, legacyArgs, scopeA.ProjectID)
 }
