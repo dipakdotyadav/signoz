@@ -3496,8 +3496,21 @@ func (r *ClickHouseReader) GetLogAggregateAttributes(ctx context.Context, req *v
 		return nil, fmt.Errorf("unsupported aggregate operator")
 	}
 
-	query = fmt.Sprintf("SELECT DISTINCT(tag_key), tag_type, tag_data_type from %s.%s WHERE %s and tag_type != 'logfield' limit $2", r.logsDB, r.logsTagAttributeTableV2, where)
-	rows, err = r.db.Query(ctx, query, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+	scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+	if scopeErr != nil {
+		return nil, fmt.Errorf("invalid authenticated tenant scope for aggregate log metadata: %w", scopeErr)
+	}
+	table := r.logsTagAttributeTableV2
+	if scoped {
+		table = r.logsTagAttributeTableV3
+		where = scopeFilter + " AND " + where
+		query = fmt.Sprintf("SELECT DISTINCT(tag_key), tag_type, tag_data_type from %s.%s WHERE %s and tag_type != 'logfield' limit $4", r.logsDB, table, where)
+		args := append(scopeArgs, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+		rows, err = r.db.Query(ctx, query, args...)
+	} else {
+		query = fmt.Sprintf("SELECT DISTINCT(tag_key), tag_type, tag_data_type from %s.%s WHERE %s and tag_type != 'logfield' limit $2", r.logsDB, table, where)
+		rows, err = r.db.Query(ctx, query, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+	}
 	if err != nil {
 		r.logger.Error("Error while executing query", errorsV2.Attr(err))
 		return nil, fmt.Errorf("error while executing query: %s", err.Error())
