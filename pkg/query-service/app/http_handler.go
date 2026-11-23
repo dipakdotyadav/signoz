@@ -53,6 +53,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/query-service/postprocess"
 	"github.com/SigNoz/signoz/pkg/types"
 	"github.com/SigNoz/signoz/pkg/types/authtypes"
+	"github.com/SigNoz/signoz/pkg/types/coretypes"
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/featuretypes"
 	"github.com/SigNoz/signoz/pkg/types/instrumentationtypes"
@@ -324,20 +325,30 @@ func (aH *APIHandler) RegisterQueryRangeV3Routes(router *mux.Router, am *middlew
 	legacyQuery := func(next http.HandlerFunc) http.HandlerFunc {
 		return am.ViewAccess(am.RejectProjectHeaderForLegacyQuery(next))
 	}
-	subRouter.HandleFunc("/autocomplete/aggregate_attributes", legacyQuery(
+	// Log metadata autocomplete is tenant-aware. Other signal metadata readers
+	// are still organization-scoped and are rejected by the handlers when a
+	// project selector is present.
+	projectAwareAutocomplete := func(next http.HandlerFunc) http.HandlerFunc {
+		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+			if strings.TrimSpace(req.Header.Get("X-SigNoz-Project-ID")) != "" {
+				am.ProjectHeaderAccess(next, coretypes.VerbRead).ServeHTTP(rw, req)
+				return
+			}
+			am.ViewAccess(next).ServeHTTP(rw, req)
+		})
+	}
+	subRouter.HandleFunc("/autocomplete/aggregate_attributes", projectAwareAutocomplete(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autocompleteAggregateAttributes))).Methods(http.MethodGet)
-	subRouter.HandleFunc("/autocomplete/attribute_keys", legacyQuery(
+	subRouter.HandleFunc("/autocomplete/attribute_keys", projectAwareAutocomplete(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autoCompleteAttributeKeys))).Methods(http.MethodGet)
-	subRouter.HandleFunc("/autocomplete/attribute_values", legacyQuery(
+	subRouter.HandleFunc("/autocomplete/attribute_values", projectAwareAutocomplete(
 		withCacheControl(AutoCompleteCacheControlAge, aH.autoCompleteAttributeValues))).Methods(http.MethodGet)
 
-	// Legacy autocomplete endpoints are organization-scoped. Project-scoped
-	// callers must use APIs that explicitly consume the authenticated TenantScope.
-	subRouter.HandleFunc("/auto_complete/attribute_values", legacyQuery(aH.autoCompleteAttributeValuesPost)).Methods(http.MethodPost)
+	subRouter.HandleFunc("/auto_complete/attribute_values", projectAwareAutocomplete(aH.autoCompleteAttributeValuesPost)).Methods(http.MethodPost)
 
 	subRouter.HandleFunc("/query_range", legacyQuery(aH.QueryRangeV3)).Methods(http.MethodPost)
 	subRouter.HandleFunc("/query_range/format", legacyQuery(aH.QueryRangeV3Format)).Methods(http.MethodPost)
-	subRouter.HandleFunc("/filter_suggestions", legacyQuery(aH.getQueryBuilderSuggestions)).Methods(http.MethodGet)
+	subRouter.HandleFunc("/filter_suggestions", projectAwareAutocomplete(aH.getQueryBuilderSuggestions)).Methods(http.MethodGet)
 	subRouter.HandleFunc("/logs/livetail", legacyQuery(aH.Signoz.Handlers.QuerierHandler.QueryRawStream)).Methods(http.MethodGet)
 }
 
