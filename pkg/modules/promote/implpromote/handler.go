@@ -26,11 +26,11 @@ func validatePromotionTenantScope(r *http.Request) error {
 		return errors.NewUnauthenticatedf(errors.CodeUnauthenticated, "unauthenticated")
 	}
 	scope, ok := ctxtypes.TenantScopeFromContext(r.Context())
-	if claims.OrgID != "" {
-		if !ok || !scope.Valid() {
-			return errors.NewInvalidInputf(errors.CodeInvalidInput, "authenticated project scope is required for promotion operations")
+	if ok {
+		if !scope.Valid() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "complete authenticated project scope is required for promotion operations")
 		}
-		if scope.OrgID != claims.OrgID {
+		if claims.OrgID != "" && scope.OrgID != claims.OrgID {
 			return errors.NewInvalidInputf(errors.CodeInvalidInput, "promotion tenant scope does not match authenticated organization")
 		}
 	}
