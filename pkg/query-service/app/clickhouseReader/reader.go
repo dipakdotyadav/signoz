@@ -3801,7 +3801,7 @@ func (r *ClickHouseReader) GetLogAttributeValues(ctx context.Context, req *v3.Fi
 
 		// prepare the query and run. Project-scoped requests must constrain the
 		// log rows themselves; static columns do not come from tag_attributes_v3.
-		scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+		_, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
 		if scopeErr != nil {
 			return nil, fmt.Errorf("invalid authenticated tenant scope for top-level log values: %w", scopeErr)
 		}
