@@ -3793,8 +3793,23 @@ func (r *ClickHouseReader) GetLogAttributeValues(ctx context.Context, req *v3.Fi
 			selectKey = fmt.Sprintf("toInt64(%s)", req.FilterAttributeKey)
 		}
 
-		// prepare the query and run
-		if len(req.SearchText) != 0 {
+		// prepare the query and run. Project-scoped requests must constrain the
+		// log rows themselves; static columns do not come from tag_attributes_v3.
+		scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+		if scopeErr != nil {
+			return nil, fmt.Errorf("invalid authenticated tenant scope for top-level log values: %w", scopeErr)
+		}
+		if scoped {
+			if len(req.SearchText) != 0 {
+				query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) and %s and %s ILIKE $3 limit $4", selectKey, r.logsDB, r.logsLocalTableName, "resource.signoz.org.id=$1 AND resource.signoz.project.id=$2", filterValueColumnWhere)
+				args := append(scopeArgs, searchText, req.Limit)
+				rows, err = r.db.Query(ctx, query, args...)
+			} else {
+				query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) and %s limit $3", selectKey, r.logsDB, r.logsLocalTableName, scopeFilter)
+				args := append(scopeArgs, req.Limit)
+				rows, err = r.db.Query(ctx, query, args...)
+			}
+		} else if len(req.SearchText) != 0 {
 			query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) and %s ILIKE $1 limit $2", selectKey, r.logsDB, r.logsLocalTableName, filterValueColumnWhere)
 			rows, err = r.db.Query(ctx, query, searchText, req.Limit)
 		} else {
