@@ -2,6 +2,7 @@ package clickhouseReader
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
@@ -25,20 +26,7 @@ func tenantTagMetadataScope(ctx context.Context, firstArg int) (string, []any, b
 		return "", nil, true, err
 	}
 
-	return "org_id=$" + itoa(firstArg) + " AND project_id=$" + itoa(firstArg+1),
+	return "org_id=$" + strconv.Itoa(firstArg) + " AND project_id=$" + strconv.Itoa(firstArg+1),
 		[]any{orgID.String(), projectID.String()}, true, nil
 }
 
-func itoa(value int) string {
-	if value == 0 {
-		return "0"
-	}
-	var buf [20]byte
-	i := len(buf)
-	for value > 0 {
-		i--
-		buf[i] = byte('0' + value%10)
-		value /= 10
-	}
-	return string(buf[i:])
-}
