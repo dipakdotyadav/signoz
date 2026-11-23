@@ -3574,7 +3574,7 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 	// User-provided tag type and search text are always bound parameters.
 	query, args := buildLogTagAttributeKeysQuery(
 		r.logsDB, table, scoped, scopeFilter, scopeArgs,
-		req.TagType, req.SearchText, req.Limit,
+		string(req.TagType), req.SearchText, req.Limit,
 	)
 	rows, err = r.db.Query(ctx, query, args...)
 	if err != nil {
