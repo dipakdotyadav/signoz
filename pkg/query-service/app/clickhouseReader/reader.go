@@ -142,6 +142,7 @@ type ClickHouseReader struct {
 	logsAttributeKeys       string
 	logsResourceKeys        string
 	logsTagAttributeTableV2 string
+	logsTagAttributeTableV3 string
 	logger                  *slog.Logger
 
 	logsTableV2              string
@@ -209,6 +210,7 @@ func NewReader(
 		logsAttributeKeys:        options.primary.LogsAttributeKeysTable,
 		logsResourceKeys:         options.primary.LogsResourceKeysTable,
 		logsTagAttributeTableV2:  options.primary.LogsTagAttributeTableV2,
+		logsTagAttributeTableV3:  options.primary.LogsTagAttributeTableV3,
 		liveTailRefreshSeconds:   options.primary.LiveTailRefreshSeconds,
 		cluster:                  cluster,
 		logsTableV2:              options.primary.LogsTableV2,
