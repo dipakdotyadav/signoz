@@ -3811,7 +3811,7 @@ func (r *ClickHouseReader) GetLogAttributeValues(ctx context.Context, req *v3.Fi
 				args := append(scopeArgs, searchText, req.Limit)
 				rows, err = r.db.Query(ctx, query, args...)
 			} else {
-				query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) and %s limit $3", selectKey, r.logsDB, r.logsLocalTableName, scopeFilter)
+				query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) and %s limit $3", selectKey, r.logsDB, r.logsLocalTableName, "resource.\x60signoz.org.id\x60=$1 AND resource.\x60signoz.project.id\x60=$2")
 				args := append(scopeArgs, req.Limit)
 				rows, err = r.db.Query(ctx, query, args...)
 			}
