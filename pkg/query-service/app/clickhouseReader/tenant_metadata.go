@@ -3,8 +3,8 @@ package clickhouseReader
 import (
 	"context"
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/valuer"
@@ -31,7 +31,6 @@ func tenantTagMetadataScope(ctx context.Context, firstArg int) (string, []any, b
 	return "org_id=$" + strconv.Itoa(firstArg) + " AND project_id=$" + strconv.Itoa(firstArg+1),
 		[]any{orgID.String(), projectID.String()}, true, nil
 }
-
 
 func buildLogTagAttributeKeysQuery(
 	logsDB, table string,
