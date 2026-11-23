@@ -268,3 +268,17 @@ func TestAddLogMetadataTenantScopeRejectsIncompleteScope(t *testing.T) {
 		})
 	}
 }
+
+func TestAddMetricMetadataTenantScopeRejectsIncompleteScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	for name, scope := range map[string]ctxtypes.TenantScope{
+		"organization only": {OrgID: orgID.String()},
+		"project only": {ProjectID: "22222222-2222-4222-8222-222222222222"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := ctxtypes.NewContextWithTenantScope(context.Background(), scope)
+			sb := sqlbuilder.Select("*").From("signoz_metrics.distributed_metadata")
+			require.Error(t, addMetricMetadataTenantScope(ctx, orgID, sb, "resource_attributes"))
+		})
+	}
+}
