@@ -240,3 +240,31 @@ func TestAddLogBodyMetadataTenantScopeRejectsMissingOrMismatchedScope(t *testing
 		})
 	}
 }
+
+func TestAddTraceMetadataTenantScopeRejectsIncompleteScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	for name, scope := range map[string]ctxtypes.TenantScope{
+		"organization only": {OrgID: orgID.String()},
+		"project only": {ProjectID: "22222222-2222-4222-8222-222222222222"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := ctxtypes.NewContextWithTenantScope(context.Background(), scope)
+			sb := sqlbuilder.Select("*").From("signoz_traces.span_attributes_keys")
+			require.Error(t, addTraceMetadataTenantScope(ctx, orgID, sb))
+		})
+	}
+}
+
+func TestAddLogMetadataTenantScopeRejectsIncompleteScope(t *testing.T) {
+	orgID := valuer.MustNewUUID("11111111-1111-4111-8111-111111111111")
+	for name, scope := range map[string]ctxtypes.TenantScope{
+		"organization only": {OrgID: orgID.String()},
+		"project only": {ProjectID: "22222222-2222-4222-8222-222222222222"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := ctxtypes.NewContextWithTenantScope(context.Background(), scope)
+			sb := sqlbuilder.Select("*").From("signoz_logs.distributed_tag_attributes_v3")
+			require.Error(t, addLogMetadataTenantScope(ctx, orgID, sb))
+		})
+	}
+}
