@@ -3,7 +3,9 @@ package clickhouseReader
 import (
 	"context"
 	"testing"
+	"strings"
 
+	"github.com/SigNoz/signoz/pkg/query-service/model/v3"
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/stretchr/testify/require"
 )
@@ -101,5 +103,43 @@ func TestBuildLogTagAttributeKeysQuery(t *testing.T) {
 		require.NotContains(t, query, "1=1")
 		require.Equal(t, "tag' OR 1=1 --", args[2])
 		require.Equal(t, "%%' OR 1=1 --%", args[3])
+	})
+}
+
+func TestBuildLogAttributeValuesQueryScopesEveryUnionArm(t *testing.T) {
+	attributes := []v3.AttributeKey{
+		{Key: "service.name", DataType: v3.AttributeKeyDataTypeString},
+		{Key: "http.route", DataType: v3.AttributeKeyDataTypeString},
+	}
+
+	t.Run("project scope is repeated for every attribute lookup", func(t *testing.T) {
+		orgID := "11111111-1111-4111-8111-111111111111"
+		projectID := "22222222-2222-4222-8222-222222222222"
+		filter := "org_id=$1 AND project_id=$2"
+		query, args := buildLogAttributeValuesQuery(
+			"signoz_logs", "distributed_tag_attributes_v3",
+			true, filter, []any{orgID, projectID}, attributes, 5,
+		)
+
+		require.Equal(t, 2, strings.Count(query, filter))
+		require.Contains(t, query, "tag_key = $3")
+		require.Contains(t, query, "tag_key = $4")
+		require.Contains(t, query, "distributed_tag_attributes_v3")
+		require.Equal(t, []any{orgID, projectID, "service.name", "http.route"}, args)
+		require.NotContains(t, query, orgID)
+		require.NotContains(t, query, projectID)
+	})
+
+	t.Run("legacy query remains unscoped", func(t *testing.T) {
+		query, args := buildLogAttributeValuesQuery(
+			"signoz_logs", "distributed_tag_attributes_v2",
+			false, "", nil, attributes, 5,
+		)
+
+		require.NotContains(t, query, "org_id")
+		require.NotContains(t, query, "project_id")
+		require.Contains(t, query, "tag_key = $1")
+		require.Contains(t, query, "tag_key = $2")
+		require.Equal(t, []any{"service.name", "http.route"}, args)
 	})
 }
