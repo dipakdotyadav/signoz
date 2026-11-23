@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -9,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/SigNoz/signoz/pkg/query-service/model"
+	v3 "github.com/SigNoz/signoz/pkg/query-service/model/v3"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 )
 
 func TestPrepareQuery(t *testing.T) {
@@ -129,4 +132,26 @@ func TestPrepareQuery(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRejectUnsupportedProjectScopedAutocomplete(t *testing.T) {
+	ctx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "11111111-1111-4111-8111-111111111111",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	t.Run("logs are supported", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v3/autocomplete/attribute_keys", nil).WithContext(ctx)
+		recorder := httptest.NewRecorder()
+		require.False(t, rejectUnsupportedProjectScopedAutocomplete(recorder, req, v3.DataSourceLogs))
+	})
+	t.Run("metrics are rejected until tenant metadata exists", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v3/autocomplete/attribute_keys", nil).WithContext(ctx)
+		recorder := httptest.NewRecorder()
+		require.True(t, rejectUnsupportedProjectScopedAutocomplete(recorder, req, v3.DataSourceMetrics))
+	})
+	t.Run("organization-wide requests retain existing behavior", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/v3/autocomplete/attribute_keys", nil)
+		recorder := httptest.NewRecorder()
+		require.False(t, rejectUnsupportedProjectScopedAutocomplete(recorder, req, v3.DataSourceMetrics))
+	})
 }
