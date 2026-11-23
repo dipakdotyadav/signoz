@@ -439,19 +439,14 @@ func (t *telemetryMetaStore) isPathPromoted(ctx context.Context, entry telemetry
 	return rows.Next(), nil
 }
 
-func (t *telemetryMetaStore) GetPromotedPaths(ctx context.Context, entry telemetrytypes.EvolutionEntry, paths ...string) (map[string]bool, error) {
-	ctx = withTelemetryContext(ctx, entry.Signal, "GetPromotedPaths")
-	scope, tenantScoped, err := tenantPromotionScope(ctx)
-	if err != nil {
-		return nil, err
-	}
+func buildGetPromotedPathsQuery(entry telemetrytypes.EvolutionEntry, scope *ctxtypes.TenantScope, paths ...string) (string, []any) {
 	table := PromotedPathsTableName
-	if tenantScoped {
+	if scope != nil {
 		table = TenantPromotedPathsTableName
 	}
 	sb := sqlbuilder.Select("field_name").From(fmt.Sprintf("%s.%s", DBName, table))
 	conditions := []string{}
-	if tenantScoped {
+	if scope != nil {
 		conditions = append(conditions, sb.Equal("org_id", scope.OrgID), sb.Equal("project_id", scope.ProjectID))
 	}
 	conditions = append(conditions,
@@ -469,8 +464,21 @@ func (t *telemetryMetaStore) GetPromotedPaths(ctx context.Context, entry telemet
 		conditions = append(conditions, sb.In("field_name", pathArgs))
 	}
 	sb.Where(sb.And(conditions...))
-
 	query, args := sb.BuildWithFlavor(sqlbuilder.ClickHouse)
+	return query, args
+}
+
+func (t *telemetryMetaStore) GetPromotedPaths(ctx context.Context, entry telemetrytypes.EvolutionEntry, paths ...string) (map[string]bool, error) {
+	ctx = withTelemetryContext(ctx, entry.Signal, "GetPromotedPaths")
+	scope, tenantScoped, err := tenantPromotionScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var tenantScope *ctxtypes.TenantScope
+	if tenantScoped {
+		tenantScope = &scope
+	}
+	query, args := buildGetPromotedPathsQuery(entry, tenantScope, paths...)
 	rows, err := t.telemetrystore.ClickhouseDB().Query(ctx, query, args...)
 	if err != nil {
 		return nil, errors.WrapInternalf(err, CodeFailCheckPathPromoted, "failed to get promoted paths")
