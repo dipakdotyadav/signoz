@@ -1,6 +1,7 @@
 package telemetrymetadata
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/SigNoz/signoz-otel-collector/constants"
 	"github.com/SigNoz/signoz/pkg/querybuilder"
 	"github.com/SigNoz/signoz/pkg/telemetryschema/logstelemetryschema"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/promotetypes"
 	"github.com/stretchr/testify/require"
 )
@@ -187,4 +189,25 @@ func TestUnfoldJSONSubColumnIndexExprTracesRoundTrip(t *testing.T) {
 			require.Equal(t, tc.jsonDataType, columnType)
 		})
 	}
+}
+
+
+func TestTenantPromotionScope(t *testing.T) {
+	_, scoped, err := tenantPromotionScope(context.Background())
+	require.NoError(t, err)
+	require.False(t, scoped, "organization-wide legacy calls have no tenant scope")
+
+	validCtx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{
+		OrgID: "11111111-1111-4111-8111-111111111111",
+		ProjectID: "22222222-2222-4222-8222-222222222222",
+	})
+	scope, scoped, err := tenantPromotionScope(validCtx)
+	require.NoError(t, err)
+	require.True(t, scoped)
+	require.Equal(t, "22222222-2222-4222-8222-222222222222", scope.ProjectID)
+
+	invalidCtx := ctxtypes.NewContextWithTenantScope(context.Background(), ctxtypes.TenantScope{OrgID: "org-only"})
+	_, scoped, err = tenantPromotionScope(invalidCtx)
+	require.True(t, scoped)
+	require.Error(t, err, "an incomplete scope must fail closed")
 }
