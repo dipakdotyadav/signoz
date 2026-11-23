@@ -88,6 +88,11 @@ func (h *handler) ListPromotedPaths(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) IndexMaterializedPaths(w http.ResponseWriter, r *http.Request) {
+	if err := validatePromotionTenantScope(r); err != nil {
+		render.Error(w, err)
+		return
+	}
+
 	var req promotetypes.PostableIndexMaterializedPaths
 	if err := binding.JSON.BindBody(r.Body, &req); err != nil {
 		render.Error(w, err)
