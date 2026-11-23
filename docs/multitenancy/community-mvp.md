@@ -40,19 +40,39 @@ with mode `0600`. Keep that file out of source control.
 
 ## Collector
 
-Run the forked Collector with both its default configuration and
-`config/multitenant-local.yaml`. For local loopback-only testing, the overlay
-must point its resolver to:
+Use the standalone configuration from the companion Collector branch:
+`config/multitenant-local.yaml`. It is a complete local configuration, not
+an overlay automatically merged with `default-config.yaml`.
+
+Run the Collector on the host (not in a container) for this local profile so
+the configured `localhost` API and ClickHouse endpoints resolve correctly.
+The local resolver is:
 
 ```yaml
 resolver_endpoint: http://localhost:8080/api/v2/internal/ingestion-keys/resolve
 allow_insecure: true
 ```
 
-Set the same high-entropy `SIGNOZ_INTERNAL_INGESTION_RESOLVER_TOKEN` in the
-SigNoz Community server and Collector processes. This HTTP exception is only
-for a local loopback development environment; use HTTPS and
-`allow_insecure: false` outside it.
+Generate one high-entropy service token and configure the exact same
+`SIGNOZ_INTERNAL_INGESTION_RESOLVER_TOKEN` in the SigNoz Community server
+process/container and the Collector process. For example:
+
+```bash
+export SIGNOZ_INTERNAL_INGESTION_RESOLVER_TOKEN="$(openssl rand -hex 32)"
+```
+
+Build and start the Collector from its repository root:
+
+```bash
+make build
+make run CONFIG_FILE=./config/multitenant-local.yaml
+```
+
+The HTTP exception is accepted only for loopback resolver addresses
+(`localhost`, `127.0.0.1`, or `::1`) and requires explicit
+`allow_insecure: true`. For a container network or any non-local deployment,
+use service DNS names with HTTPS and `allow_insecure: false`. Do not expose
+the internal resolver endpoint publicly.
 
 ## Ingestion endpoints
 
