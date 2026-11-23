@@ -3646,6 +3646,12 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 }
 
 func (r *ClickHouseReader) FetchRelatedValues(ctx context.Context, req *v3.FilterAttributeValueRequest) ([]string, error) {
+	// Related-value metadata currently lives in a shared metadata table without
+	// authenticated org/project dimensions. Do not expose cross-project values.
+	if _, scoped := ctxtypes.TenantScopeFromContext(ctx); scoped {
+		return []string{}, nil
+	}
+
 	ctx = ctxtypes.NewContextWithCommentVals(ctx, map[string]string{
 		instrumentationtypes.CodeNamespace:    "clickhouse-reader",
 		instrumentationtypes.CodeFunctionName: "FetchRelatedValues",
