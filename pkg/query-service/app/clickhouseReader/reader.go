@@ -3554,11 +3554,34 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 		tagTypeFilter = fmt.Sprintf(`tag_type != 'logfield' and tag_type = '%s'`, req.TagType)
 	}
 
+	scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+	if scopeErr != nil {
+		return nil, fmt.Errorf("invalid authenticated tenant scope for log metadata: %w", scopeErr)
+	}
+	table := r.logsTagAttributeTableV2
+	if scoped {
+		table = r.logsTagAttributeTableV3
+	}
+	where := tagTypeFilter
+	if scoped {
+		where = scopeFilter + " AND " + where
+	}
+
 	if len(req.SearchText) != 0 {
-		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from  %s.%s where %s and tag_key ILIKE $1 limit $2", r.logsDB, r.logsTagAttributeTableV2, tagTypeFilter)
-		rows, err = r.db.Query(ctx, query, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+		if scoped {
+			query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s and tag_key ILIKE $3 limit $4", r.logsDB, table, where)
+			args := append(scopeArgs, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+			rows, err = r.db.Query(ctx, query, args...)
+		} else {
+			query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s and tag_key ILIKE $1 limit $2", r.logsDB, table, where)
+			rows, err = r.db.Query(ctx, query, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
+		}
+	} else if scoped {
+		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $3", r.logsDB, table, where)
+		args := append(scopeArgs, req.Limit)
+		rows, err = r.db.Query(ctx, query, args...)
 	} else {
-		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $1", r.logsDB, r.logsTagAttributeTableV2, tagTypeFilter)
+		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $1", r.logsDB, table, where)
 		rows, err = r.db.Query(ctx, query, req.Limit)
 	}
 
@@ -3765,16 +3788,38 @@ func (r *ClickHouseReader) GetLogAttributeValues(ctx context.Context, req *v3.Fi
 			query = fmt.Sprintf("select distinct %s from %s.%s where timestamp >= toInt64(toUnixTimestamp(now() - INTERVAL 48 HOUR)*1000000000) limit $1", selectKey, r.logsDB, r.logsLocalTableName)
 			rows, err = r.db.Query(ctx, query, req.Limit)
 		}
-	} else if len(req.SearchText) != 0 {
-		filterValueColumnWhere := filterValueColumn
-		if req.FilterAttributeKeyDataType != v3.AttributeKeyDataTypeString {
-			filterValueColumnWhere = fmt.Sprintf("toString(%s)", filterValueColumn)
-		}
-		query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE tag_key=$1 AND %s ILIKE $2 AND tag_type=$3 LIMIT $4", filterValueColumn, r.logsDB, r.logsTagAttributeTableV2, filterValueColumnWhere)
-		rows, err = r.db.Query(ctx, query, req.FilterAttributeKey, searchText, req.TagType, req.Limit)
 	} else {
-		query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE tag_key=$1 AND tag_type=$2 LIMIT $3", filterValueColumn, r.logsDB, r.logsTagAttributeTableV2)
-		rows, err = r.db.Query(ctx, query, req.FilterAttributeKey, req.TagType, req.Limit)
+		scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+		if scopeErr != nil {
+			return nil, fmt.Errorf("invalid authenticated tenant scope for log attribute values: %w", scopeErr)
+		}
+		table := r.logsTagAttributeTableV2
+		if scoped {
+			table = r.logsTagAttributeTableV3
+		}
+		if scoped && len(req.SearchText) != 0 {
+			filterValueColumnWhere := filterValueColumn
+			if req.FilterAttributeKeyDataType != v3.AttributeKeyDataTypeString {
+				filterValueColumnWhere = fmt.Sprintf("toString(%s)", filterValueColumn)
+			}
+			query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE %s AND tag_key=$3 AND %s ILIKE $4 AND tag_type=$5 LIMIT $6", filterValueColumn, r.logsDB, table, scopeFilter, filterValueColumnWhere)
+			args := append(scopeArgs, req.FilterAttributeKey, searchText, req.TagType, req.Limit)
+			rows, err = r.db.Query(ctx, query, args...)
+		} else if scoped {
+			query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE %s AND tag_key=$3 AND tag_type=$4 LIMIT $5", filterValueColumn, r.logsDB, table, scopeFilter)
+			args := append(scopeArgs, req.FilterAttributeKey, req.TagType, req.Limit)
+			rows, err = r.db.Query(ctx, query, args...)
+		} else if len(req.SearchText) != 0 {
+			filterValueColumnWhere := filterValueColumn
+			if req.FilterAttributeKeyDataType != v3.AttributeKeyDataTypeString {
+				filterValueColumnWhere = fmt.Sprintf("toString(%s)", filterValueColumn)
+			}
+			query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE tag_key=$1 AND %s ILIKE $2 AND tag_type=$3 LIMIT $4", filterValueColumn, r.logsDB, table, filterValueColumnWhere)
+			rows, err = r.db.Query(ctx, query, req.FilterAttributeKey, searchText, req.TagType, req.Limit)
+		} else {
+			query = fmt.Sprintf("SELECT DISTINCT %s FROM %s.%s WHERE tag_key=$1 AND tag_type=$2 LIMIT $3", filterValueColumn, r.logsDB, table)
+			rows, err = r.db.Query(ctx, query, req.FilterAttributeKey, req.TagType, req.Limit)
+		}
 	}
 
 	if err != nil {
