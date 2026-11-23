@@ -235,3 +235,6 @@ pyrightconfig.json
 .deepsec.zip
 .claude/worktrees/
 .claude/settings.local.json
+
+# Local multi-tenancy MVP credentials (contains one-time project secrets)
+signoz-mvp-projects.env
