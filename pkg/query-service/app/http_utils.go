@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 )
 
 var (
@@ -16,7 +18,13 @@ var (
 
 func withCacheControl(maxAge time.Duration, h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", int(maxAge.Seconds())))
+		if _, scoped := ctxtypes.TenantScopeFromContext(r.Context()); scoped {
+			// Project-scoped responses must not be reused across users or
+			// project selections by browser or intermediary caches.
+			w.Header().Set("Cache-Control", "private, no-store")
+		} else {
+			w.Header().Set("Cache-Control", fmt.Sprintf("max-age=%d", int(maxAge.Seconds())))
+		}
 		h(w, r)
 	}
 }
