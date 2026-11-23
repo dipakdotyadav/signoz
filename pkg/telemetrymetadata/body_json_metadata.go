@@ -405,12 +405,32 @@ func derefValue(v any) any {
 	return val.Interface()
 }
 
+func tenantPromotionScope(ctx context.Context) (ctxtypes.TenantScope, bool, error) {
+	scope, present := ctxtypes.TenantScopeFromContext(ctx)
+	if !present {
+		return ctxtypes.TenantScope{}, false, nil
+	}
+	if !scope.Valid() {
+		return ctxtypes.TenantScope{}, true, errors.NewInvalidInputf(errors.CodeInvalidInput, "complete authenticated organization and project scope is required")
+	}
+	return scope, true, nil
+}
+
 func (t *telemetryMetaStore) isPathPromoted(ctx context.Context, entry telemetrytypes.EvolutionEntry, path string) (bool, error) {
 	ctx = withTelemetryContext(ctx, entry.Signal, "isPathPromoted")
 	split := strings.Split(path, telemetrytypes.ArraySep)
 	pathSegment := split[0]
+	scope, tenantScoped, err := tenantPromotionScope(ctx)
+	if err != nil {
+		return false, err
+	}
 	query := fmt.Sprintf("SELECT 1 FROM %s.%s WHERE signal = ? AND column_name = ? AND field_context = ? AND field_name = ? LIMIT 1", DBName, PromotedPathsTableName)
-	rows, err := t.telemetrystore.ClickhouseDB().Query(ctx, query, entry.Signal, entry.ColumnName, entry.FieldContext, pathSegment)
+	args := []any{entry.Signal, entry.ColumnName, entry.FieldContext, pathSegment}
+	if tenantScoped {
+		query = fmt.Sprintf("SELECT 1 FROM %s.%s WHERE org_id = ? AND project_id = ? AND signal = ? AND column_name = ? AND field_context = ? AND field_name = ? LIMIT 1", DBName, TenantPromotedPathsTableName)
+		args = []any{scope.OrgID, scope.ProjectID, entry.Signal, entry.ColumnName, entry.FieldContext, pathSegment}
+	}
+	rows, err := t.telemetrystore.ClickhouseDB().Query(ctx, query, args...)
 	if err != nil {
 		return false, errors.WrapInternalf(err, CodeFailCheckPathPromoted, "failed to check if path %s is promoted", path)
 	}
@@ -421,13 +441,25 @@ func (t *telemetryMetaStore) isPathPromoted(ctx context.Context, entry telemetry
 
 func (t *telemetryMetaStore) GetPromotedPaths(ctx context.Context, entry telemetrytypes.EvolutionEntry, paths ...string) (map[string]bool, error) {
 	ctx = withTelemetryContext(ctx, entry.Signal, "GetPromotedPaths")
-	sb := sqlbuilder.Select("field_name").From(fmt.Sprintf("%s.%s", DBName, PromotedPathsTableName))
-	conditions := []string{
+	scope, tenantScoped, err := tenantPromotionScope(ctx)
+	if err != nil {
+		return nil, err
+	}
+	table := PromotedPathsTableName
+	if tenantScoped {
+		table = TenantPromotedPathsTableName
+	}
+	sb := sqlbuilder.Select("field_name").From(fmt.Sprintf("%s.%s", DBName, table))
+	conditions := []string{}
+	if tenantScoped {
+		conditions = append(conditions, sb.Equal("org_id", scope.OrgID), sb.Equal("project_id", scope.ProjectID))
+	}
+	conditions = append(conditions,
 		sb.Equal("signal", entry.Signal),
 		sb.Equal("column_name", entry.ColumnName),
 		sb.Equal("field_context", entry.FieldContext),
 		sb.NotEqual("field_name", "__all__"),
-	}
+	)
 	if len(paths) > 0 {
 		pathArgs := make([]interface{}, len(paths))
 		for i, path := range paths {
@@ -467,9 +499,18 @@ func CleanPathPrefixes(path string) string {
 
 func (t *telemetryMetaStore) PromotePaths(ctx context.Context, entry telemetrytypes.EvolutionEntry, paths ...string) error {
 	ctx = withTelemetryContext(ctx, entry.Signal, "PromotePaths")
+	scope, tenantScoped, err := tenantPromotionScope(ctx)
+	if err != nil {
+		return err
+	}
+	table := PromotedPathsTableName
+	columns := "signal, column_name, column_type, field_context, field_name, version, release_time"
+	if tenantScoped {
+		table = TenantPromotedPathsTableName
+		columns = "org_id, project_id, signal, column_name, column_type, field_context, field_name, version, release_time"
+	}
 	batch, err := t.telemetrystore.ClickhouseDB().PrepareBatch(ctx,
-		fmt.Sprintf("INSERT INTO %s.%s (signal, column_name, column_type, field_context, field_name, version, release_time) VALUES", DBName,
-			PromotedPathsTableName))
+		fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES", DBName, table, columns))
 	if err != nil {
 		return errors.WrapInternalf(err, CodeFailedToPrepareBatch, "failed to prepare batch")
 	}
@@ -480,7 +521,14 @@ func (t *telemetryMetaStore) PromotePaths(ctx context.Context, entry telemetryty
 		if trimmed == "" {
 			continue
 		}
-		if err := batch.Append(entry.Signal, entry.ColumnName, entry.ColumnType, entry.FieldContext, trimmed, entry.Version, releaseTime); err != nil {
+		var appendErr error
+		if tenantScoped {
+			appendErr = batch.Append(scope.OrgID, scope.ProjectID, entry.Signal, entry.ColumnName, entry.ColumnType, entry.FieldContext, trimmed, entry.Version, releaseTime)
+		} else {
+			appendErr = batch.Append(entry.Signal, entry.ColumnName, entry.ColumnType, entry.FieldContext, trimmed, entry.Version, releaseTime)
+		}
+		if appendErr != nil {
+			err := appendErr
 			_ = batch.Abort()
 			return errors.WrapInternalf(err, CodeFailedToAppendPath, "failed to append path")
 		}
