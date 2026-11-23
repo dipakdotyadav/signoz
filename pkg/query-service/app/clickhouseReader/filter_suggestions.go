@@ -163,17 +163,35 @@ func (r *ClickHouseReader) getValuesForLogAttributes(
 		attributes = attributes[:10]
 	}
 
+	scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
+	if scopeErr != nil {
+		return nil, model.InternalError(fmt.Errorf("invalid authenticated tenant scope for log suggestions: %w", scopeErr))
+	}
+	table := r.logsTagAttributeTableV2
+	if scoped {
+		table = r.logsTagAttributeTableV3
+	}
+
 	tagQueries := []string{}
 	tagKeyQueryArgs := []any{}
+	if scoped {
+		tagKeyQueryArgs = append(tagKeyQueryArgs, scopeArgs...)
+	}
 	for idx, attrib := range attributes {
+		keyArg := idx + 1
+		where := fmt.Sprintf("tag_key = $%d", keyArg)
+		if scoped {
+			keyArg += 2
+			where = fmt.Sprintf("%s AND tag_key = $%d", scopeFilter, keyArg)
+		}
 		tagQueries = append(tagQueries, fmt.Sprintf(`(
 			select tag_key, string_value, number_value
 			from %s.%s
-			where tag_key = $%d and (
+			where %s and (
 				string_value != '' or number_value is not null
 			) and tag_type != 'logfield'
 			limit %d
-		)`, r.logsDB, r.logsTagAttributeTableV2, idx+1, limit))
+		)`, r.logsDB, table, where, limit))
 
 		tagKeyQueryArgs = append(tagKeyQueryArgs, attrib.Key)
 	}
