@@ -83,6 +83,20 @@ Send the key in HTTP as `signoz-ingestion-key`, or in gRPC metadata with the
 same name. Requests without a key, with an invalid/revoked/expired key, or
 with a key for an archived project must be rejected.
 
+## Focused backend checks
+
+From the SigNoz repository root, run the tenant-scope, metadata-reader, and
+project-ingestion-key package tests:
+
+```bash
+go test ./pkg/querier ./pkg/query-service/app/clickhouseReader ./pkg/modules/projectingestionkey/...
+```
+
+The ClickHouse metadata integration test is opt-in. Run it against a disposable
+test database by setting `SIGNOZ_CLICKHOUSE_TEST_ADDR` and
+`SIGNOZ_CLICKHOUSE_TEST_DATABASE` (and optional username/password variables).
+Do not point this test at production data.
+
 ## MVP acceptance tests
 
 1. Start ClickHouse, the Community server, and the forked Collector.
