@@ -52,3 +52,54 @@ func TestTenantTagMetadataScope(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+
+func TestBuildLogTagAttributeKeysQuery(t *testing.T) {
+	t.Run("organization-wide query binds user filters", func(t *testing.T) {
+		query, args := buildLogTagAttributeKeysQuery(
+			"signoz_logs", "distributed_tag_attributes_v2",
+			false, "", nil, "resource", "service", 25,
+		)
+		require.Contains(t, query, "signoz_logs.distributed_tag_attributes_v2")
+		require.Contains(t, query, "tag_type=$1")
+		require.Contains(t, query, "tag_key ILIKE $2")
+		require.Contains(t, query, "limit $3")
+		require.Equal(t, []any{"resource", "%service%", 25}, args)
+		require.NotContains(t, query, "resource")
+		require.NotContains(t, query, "service")
+	})
+
+	t.Run("project query binds tenant and user filters in order", func(t *testing.T) {
+		scopeArgs := []any{
+			"11111111-1111-4111-8111-111111111111",
+			"22222222-2222-4222-8222-222222222222",
+		}
+		query, args := buildLogTagAttributeKeysQuery(
+			"signoz_logs", "distributed_tag_attributes_v3",
+			true, "org_id=$1 AND project_id=$2", scopeArgs, "resource", "service", 25,
+		)
+		require.Contains(t, query, "signoz_logs.distributed_tag_attributes_v3")
+		require.Contains(t, query, "org_id=$1 AND project_id=$2")
+		require.Contains(t, query, "tag_type=$3")
+		require.Contains(t, query, "tag_key ILIKE $4")
+		require.Contains(t, query, "limit $5")
+		require.Equal(t, []any{
+			scopeArgs[0], scopeArgs[1], "resource", "%service%", 25,
+		}, args)
+		require.NotContains(t, query, "11111111")
+		require.NotContains(t, query, "22222222")
+		require.NotContains(t, query, "resource")
+		require.NotContains(t, query, "service")
+	})
+
+	t.Run("search text cannot alter query structure", func(t *testing.T) {
+		query, args := buildLogTagAttributeKeysQuery(
+			"signoz_logs", "distributed_tag_attributes_v3",
+			true, "org_id=$1 AND project_id=$2",
+			[]any{"org", "project"}, "tag' OR 1=1 --", "%' OR 1=1 --", 10,
+		)
+		require.NotContains(t, query, "1=1")
+		require.Equal(t, "tag' OR 1=1 --", args[2])
+		require.Equal(t, "%%' OR 1=1 --%", args[3])
+	})
+}
