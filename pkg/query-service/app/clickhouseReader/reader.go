@@ -3571,26 +3571,10 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 		table = r.logsTagAttributeTableV3
 	}
 
-	// Build predicates and arguments together so user-provided tag types and
-	// search text are always bound parameters, never interpolated into SQL.
-	whereConditions := []string{"tag_type != 'logfield'"}
-	args := make([]any, 0, 5)
-	if scoped {
-		whereConditions = append(whereConditions, scopeFilter)
-		args = append(args, scopeArgs...)
-	}
-	if req.TagType != "" {
-		args = append(args, req.TagType)
-		whereConditions = append(whereConditions, fmt.Sprintf("tag_type=$%d", len(args)))
-	}
-	if len(req.SearchText) != 0 {
-		args = append(args, fmt.Sprintf("%%%s%%", req.SearchText))
-		whereConditions = append(whereConditions, fmt.Sprintf("tag_key ILIKE $%d", len(args)))
-	}
-	args = append(args, req.Limit)
-	query = fmt.Sprintf(
-		"select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $%d",
-		r.logsDB, table, strings.Join(whereConditions, " AND "), len(args),
+	// User-provided tag type and search text are always bound parameters.
+	query, args := buildLogTagAttributeKeysQuery(
+		r.logsDB, table, scoped, scopeFilter, scopeArgs,
+		req.TagType, req.SearchText, req.Limit,
 	)
 	rows, err = r.db.Query(ctx, query, args...)
 	if err != nil {
