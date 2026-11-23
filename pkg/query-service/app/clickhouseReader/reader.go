@@ -3503,7 +3503,7 @@ func (r *ClickHouseReader) GetLogAggregateAttributes(ctx context.Context, req *v
 	table := r.logsTagAttributeTableV2
 	if scoped {
 		table = r.logsTagAttributeTableV3
-		where = scopeFilter + " AND " + where
+		where = scopeFilter + " AND " + strings.ReplaceAll(where, "$1", "$3")
 		query = fmt.Sprintf("SELECT DISTINCT(tag_key), tag_type, tag_data_type from %s.%s WHERE %s and tag_type != 'logfield' limit $4", r.logsDB, table, where)
 		args := append(scopeArgs, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
 		rows, err = r.db.Query(ctx, query, args...)
