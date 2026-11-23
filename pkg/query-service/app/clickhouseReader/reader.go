@@ -3562,11 +3562,6 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 	var rows driver.Rows
 	var response v3.FilterAttributeKeyResponse
 
-	tagTypeFilter := `tag_type != 'logfield'`
-	if req.TagType != "" {
-		tagTypeFilter = fmt.Sprintf(`tag_type != 'logfield' and tag_type = '%s'`, req.TagType)
-	}
-
 	scopeFilter, scopeArgs, scoped, scopeErr := tenantTagMetadataScope(ctx, 1)
 	if scopeErr != nil {
 		return nil, fmt.Errorf("invalid authenticated tenant scope for log metadata: %w", scopeErr)
@@ -3575,29 +3570,29 @@ func (r *ClickHouseReader) GetLogAttributeKeys(ctx context.Context, req *v3.Filt
 	if scoped {
 		table = r.logsTagAttributeTableV3
 	}
-	where := tagTypeFilter
+
+	// Build predicates and arguments together so user-provided tag types and
+	// search text are always bound parameters, never interpolated into SQL.
+	whereConditions := []string{"tag_type != 'logfield'"}
+	args := make([]any, 0, 5)
 	if scoped {
-		where = scopeFilter + " AND " + where
+		whereConditions = append(whereConditions, scopeFilter)
+		args = append(args, scopeArgs...)
 	}
-
+	if req.TagType != "" {
+		args = append(args, req.TagType)
+		whereConditions = append(whereConditions, fmt.Sprintf("tag_type=$%d", len(args)))
+	}
 	if len(req.SearchText) != 0 {
-		if scoped {
-			query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s and tag_key ILIKE $3 limit $4", r.logsDB, table, where)
-			args := append(scopeArgs, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
-			rows, err = r.db.Query(ctx, query, args...)
-		} else {
-			query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s and tag_key ILIKE $1 limit $2", r.logsDB, table, where)
-			rows, err = r.db.Query(ctx, query, fmt.Sprintf("%%%s%%", req.SearchText), req.Limit)
-		}
-	} else if scoped {
-		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $3", r.logsDB, table, where)
-		args := append(scopeArgs, req.Limit)
-		rows, err = r.db.Query(ctx, query, args...)
-	} else {
-		query = fmt.Sprintf("select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $1", r.logsDB, table, where)
-		rows, err = r.db.Query(ctx, query, req.Limit)
+		args = append(args, fmt.Sprintf("%%%s%%", req.SearchText))
+		whereConditions = append(whereConditions, fmt.Sprintf("tag_key ILIKE $%d", len(args)))
 	}
-
+	args = append(args, req.Limit)
+	query = fmt.Sprintf(
+		"select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $%d",
+		r.logsDB, table, strings.Join(whereConditions, " AND "), len(args),
+	)
+	rows, err = r.db.Query(ctx, query, args...)
 	if err != nil {
 		r.logger.Error("Error while executing query", errorsV2.Attr(err))
 		return nil, fmt.Errorf("error while executing query: %s", err.Error())
