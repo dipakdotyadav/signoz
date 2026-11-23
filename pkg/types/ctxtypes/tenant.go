@@ -24,8 +24,11 @@ func NewContextWithTenantScope(ctx context.Context, scope TenantScope) context.C
 // TenantScopeFromContext returns the authenticated tenant scope, if present.
 func TenantScopeFromContext(ctx context.Context) (TenantScope, bool) {
 	scope, ok := ctx.Value(tenantScopeKey{}).(TenantScope)
-	if !ok || !scope.Valid() {
+	if !ok {
 		return TenantScope{}, false
 	}
+	// Presence and validity are separate concerns. Returning an incomplete
+	// scope as present lets security-sensitive consumers fail closed instead
+	// of accidentally treating a malformed tenant context as organization-wide.
 	return scope, true
 }
