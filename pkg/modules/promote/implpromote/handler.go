@@ -8,6 +8,7 @@ import (
 	"github.com/SigNoz/signoz/pkg/http/render"
 	"github.com/SigNoz/signoz/pkg/modules/promote"
 	"github.com/SigNoz/signoz/pkg/types/authtypes"
+	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
 	"github.com/SigNoz/signoz/pkg/types/promotetypes"
 )
 
@@ -19,11 +20,26 @@ func NewHandler(module promote.Module) promote.Handler {
 	return &handler{module: module}
 }
 
-func (h *handler) PromotePaths(w http.ResponseWriter, r *http.Request) {
-	// TODO(Nitya): Use in multi tenant setup
-	_, err := authtypes.ClaimsFromContext(r.Context())
+func validatePromotionTenantScope(r *http.Request) error {
+	claims, err := authtypes.ClaimsFromContext(r.Context())
 	if err != nil {
-		render.Error(w, errors.NewInternalf(errors.CodeInternal, "failed to get org id from context"))
+		return errors.NewUnauthenticatedf(errors.CodeUnauthenticated, "unauthenticated")
+	}
+	scope, ok := ctxtypes.TenantScopeFromContext(r.Context())
+	if claims.OrgID != "" {
+		if !ok || !scope.Valid() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "authenticated project scope is required for promotion operations")
+		}
+		if scope.OrgID != claims.OrgID {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "promotion tenant scope does not match authenticated organization")
+		}
+	}
+	return nil
+}
+
+func (h *handler) PromotePaths(w http.ResponseWriter, r *http.Request) {
+	if err := validatePromotionTenantScope(r); err != nil {
+		render.Error(w, err)
 		return
 	}
 
@@ -47,10 +63,8 @@ func (h *handler) PromotePaths(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) ListPromotedPaths(w http.ResponseWriter, r *http.Request) {
-	// TODO(Nitya): Use in multi tenant setup
-	_, err := authtypes.ClaimsFromContext(r.Context())
-	if err != nil {
-		render.Error(w, errors.NewInternalf(errors.CodeInternal, "failed to get org id from context"))
+	if err := validatePromotionTenantScope(r); err != nil {
+		render.Error(w, err)
 		return
 	}
 
