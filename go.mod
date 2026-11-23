@@ -393,3 +393,6 @@ require (
 )
 
 replace github.com/expr-lang/expr => github.com/SigNoz/expr v1.17.7-beta
+
+// Use the forked collector containing project-aware metadata migrations and tenant promotion support.
+replace github.com/SigNoz/signoz-otel-collector => github.com/dipakdotyadav/signoz-otel-collector v0.144.6-0.20261123082618-66ef750a0bc1
