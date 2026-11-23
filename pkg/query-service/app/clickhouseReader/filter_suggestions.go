@@ -125,6 +125,46 @@ func (r *ClickHouseReader) GetQBFilterSuggestionsForLogs(
 	return &suggestions, nil
 }
 
+// buildLogAttributeValuesQuery creates one bounded value lookup per attribute.
+// Tenant predicates are repeated in every UNION arm so no arm can read another
+// project's values. All tenant and attribute values remain bound parameters.
+func buildLogAttributeValuesQuery(
+	logsDB, table string,
+	scoped bool,
+	scopeFilter string,
+	scopeArgs []any,
+	attributes []v3.AttributeKey,
+	limit uint64,
+) (string, []any) {
+	tagQueries := make([]string, 0, len(attributes))
+	args := make([]any, 0, len(scopeArgs)+len(attributes))
+	if scoped {
+		args = append(args, scopeArgs...)
+	}
+
+	for idx, attrib := range attributes {
+		keyArg := idx + 1
+		where := fmt.Sprintf("tag_key = $%d", keyArg)
+		if scoped {
+			keyArg += len(scopeArgs)
+			where = fmt.Sprintf("%s AND tag_key = $%d", scopeFilter, keyArg)
+		}
+		tagQueries = append(tagQueries, fmt.Sprintf(`(
+			select tag_key, string_value, number_value
+			from %s.%s
+			where %s and (
+				string_value != '' or number_value is not null
+			) and tag_type != 'logfield'
+			limit %d
+		)`, logsDB, table, where, limit))
+		args = append(args, attrib.Key)
+	}
+
+	return fmt.Sprintf(`select * from (
+		%s
+	) settings max_threads=2`, strings.Join(tagQueries, " UNION DISTINCT ")), args
+}
+
 // Get up to `limit` values seen for each attribute in `attributes`
 // Returns a slice of slices where the ith slice has values for ith entry in `attributes`
 func (r *ClickHouseReader) getValuesForLogAttributes(
@@ -172,33 +212,9 @@ func (r *ClickHouseReader) getValuesForLogAttributes(
 		table = r.logsTagAttributeTableV3
 	}
 
-	tagQueries := []string{}
-	tagKeyQueryArgs := []any{}
-	if scoped {
-		tagKeyQueryArgs = append(tagKeyQueryArgs, scopeArgs...)
-	}
-	for idx, attrib := range attributes {
-		keyArg := idx + 1
-		where := fmt.Sprintf("tag_key = $%d", keyArg)
-		if scoped {
-			keyArg += 2
-			where = fmt.Sprintf("%s AND tag_key = $%d", scopeFilter, keyArg)
-		}
-		tagQueries = append(tagQueries, fmt.Sprintf(`(
-			select tag_key, string_value, number_value
-			from %s.%s
-			where %s and (
-				string_value != '' or number_value is not null
-			) and tag_type != 'logfield'
-			limit %d
-		)`, r.logsDB, table, where, limit))
-
-		tagKeyQueryArgs = append(tagKeyQueryArgs, attrib.Key)
-	}
-
-	query := fmt.Sprintf(`select * from (
-		%s
-	) settings max_threads=2`, strings.Join(tagQueries, " UNION DISTINCT "))
+	query, tagKeyQueryArgs := buildLogAttributeValuesQuery(
+		r.logsDB, table, scoped, scopeFilter, scopeArgs, attributes, limit,
+	)
 
 	rows, err := r.db.Query(ctx, query, tagKeyQueryArgs...)
 	if err != nil {
