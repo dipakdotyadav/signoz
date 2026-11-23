@@ -2,6 +2,8 @@ package clickhouseReader
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"strconv"
 
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
@@ -30,3 +32,34 @@ func tenantTagMetadataScope(ctx context.Context, firstArg int) (string, []any, b
 		[]any{orgID.String(), projectID.String()}, true, nil
 }
 
+
+func buildLogTagAttributeKeysQuery(
+	logsDB, table string,
+	scoped bool,
+	scopeFilter string,
+	scopeArgs []any,
+	tagType, searchText string,
+	limit int,
+) (string, []any) {
+	where := []string{"tag_type != 'logfield'"}
+	args := make([]any, 0, len(scopeArgs)+3)
+	if scoped {
+		where = append(where, scopeFilter)
+		args = append(args, scopeArgs...)
+	}
+	if tagType != "" {
+		args = append(args, tagType)
+		where = append(where, fmt.Sprintf("tag_type=$%d", len(args)))
+	}
+	if searchText != "" {
+		args = append(args, "%"+searchText+"%")
+		where = append(where, fmt.Sprintf("tag_key ILIKE $%d", len(args)))
+	}
+	args = append(args, limit)
+
+	query := fmt.Sprintf(
+		"select distinct tag_key, tag_type, tag_data_type from %s.%s where %s limit $%d",
+		logsDB, table, strings.Join(where, " AND "), len(args),
+	)
+	return query, args
+}
