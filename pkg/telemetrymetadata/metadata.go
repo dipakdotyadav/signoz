@@ -1056,12 +1056,17 @@ func addMetricMetadataProjectScope(ctx context.Context, sb *sqlbuilder.SelectBui
 }
 
 func addMetricMetadataTenantScope(ctx context.Context, orgID valuer.UUID, sb *sqlbuilder.SelectBuilder, resourceColumn string) error {
-	// Metric metadata is derived from resource attributes. Always constrain it
+// Metric metadata is derived from resource attributes. Always constrain it
 	// to the authenticated organization; add the project dimension when the
 	// request carries a project-scoped identity.
 	scope, hasProjectScope := ctxtypes.TenantScopeFromContext(ctx)
-	if hasProjectScope && scope.OrgID != orgID.String() {
-		return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match metadata request")
+	if hasProjectScope {
+		if !scope.Valid() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "complete organization and project scope is required for metric metadata")
+		}
+		if scope.OrgID != orgID.String() {
+			return errors.NewInvalidInputf(errors.CodeInvalidInput, "tenant organization does not match metadata request")
+		}
 	}
 	sb.Where(sb.E(resourceColumn+"['signoz.org.id']", orgID.String()))
 	if hasProjectScope {
@@ -2373,22 +2378,25 @@ func (t *telemetryMetaStore) GetAllValues(ctx context.Context, orgID valuer.UUID
 		allUnspecifiedValues := &telemetrytypes.TelemetryFieldValues{}
 
 		tracesValues, tracesComplete, err := t.getSpanFieldValues(ctx, orgID, fieldValueSelector)
-		if err == nil {
-			populateComplete := populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, tracesValues, limit)
-			complete = complete && tracesComplete && populateComplete
+		if err != nil {
+			return nil, false, err
 		}
+		populateComplete := populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, tracesValues, limit)
+		complete = complete && tracesComplete && populateComplete
 
 		logsValues, logsComplete, err := t.getLogFieldValues(ctx, orgID, fieldValueSelector)
-		if err == nil {
-			populateComplete := populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, logsValues, limit)
-			complete = complete && logsComplete && populateComplete
+		if err != nil {
+			return nil, false, err
 		}
+		populateComplete = populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, logsValues, limit)
+		complete = complete && logsComplete && populateComplete
 
 		metricsValues, metricsComplete, err := t.getMetricFieldValues(ctx, orgID, fieldValueSelector)
-		if err == nil {
-			populateComplete := populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, metricsValues, limit)
-			complete = complete && metricsComplete && populateComplete
+		if err != nil {
+			return nil, false, err
 		}
+		populateComplete = populateAllUnspecifiedValues(allUnspecifiedValues, mapOfValues, mapOfRelatedValues, metricsValues, limit)
+		complete = complete && metricsComplete && populateComplete
 
 		values = allUnspecifiedValues
 	}
