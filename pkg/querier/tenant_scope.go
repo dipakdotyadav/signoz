@@ -7,6 +7,7 @@ import (
 
 	"github.com/SigNoz/signoz/pkg/errors"
 	"github.com/SigNoz/signoz/pkg/types/ctxtypes"
+	"github.com/SigNoz/signoz/pkg/types/telemetrytypes"
 	qbtypes "github.com/SigNoz/signoz/pkg/types/querybuildertypes/querybuildertypesv5"
 	"github.com/SigNoz/signoz/pkg/valuer"
 )
