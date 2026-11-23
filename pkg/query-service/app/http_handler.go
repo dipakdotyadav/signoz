@@ -331,7 +331,11 @@ func (aH *APIHandler) RegisterQueryRangeV3Routes(router *mux.Router, am *middlew
 	projectAwareAutocomplete := func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 			if strings.TrimSpace(req.Header.Get("X-SigNoz-Project-ID")) != "" {
-				am.ProjectHeaderAccess(next, coretypes.VerbRead).ServeHTTP(rw, req)
+				projectScopedNext := http.HandlerFunc(func(w http.ResponseWriter, scopedReq *http.Request) {
+					w.Header().Set("Cache-Control", "private, no-store")
+					next(w, scopedReq)
+				})
+				am.ProjectHeaderAccess(projectScopedNext, coretypes.VerbRead).ServeHTTP(rw, req)
 				return
 			}
 			am.ViewAccess(next).ServeHTTP(rw, req)
