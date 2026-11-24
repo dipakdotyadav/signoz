@@ -237,7 +237,7 @@ func TestBuildGetPromotedPathsQueryTenantIsolation(t *testing.T) {
 	require.Contains(t, argsA, scopeA.OrgID)
 	require.Contains(t, argsA, scopeA.ProjectID)
 	require.NotContains(t, argsA, scopeB.ProjectID)
-	require.Contains(t, argsA, "http.status")
+	require.Contains(t, argsA, []interface{}{"http.method", "http.status"})
 	require.NotContains(t, argsA, "http.status"+telemetrytypes.ArraySep+"0")
 
 	require.Contains(t, legacyQuery, PromotedPathsTableName)
