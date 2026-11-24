@@ -57,13 +57,16 @@ func TestProjectTenantPredicatesCompileForEverySignalStorage(t *testing.T) {
 			})
 			require.NoError(t, err)
 			require.NotNil(t, prepared.WhereClause)
+			// PrepareWhereClause returns a sqlbuilder expression containing internal
+			// placeholders. Compile it before asserting on the generated SQL.
+			sql, args := builder.Args.CompileWithFlavor(prepared.Expr, builder.Flavor())
 			for _, fragment := range tt.check {
-				require.Contains(t, prepared.Expr, fragment)
+				require.Contains(t, sql, fragment)
 			}
-			require.True(t, strings.Contains(prepared.Expr, " AND "), "both tenant predicates must be joined with AND: %s", prepared.Expr)
-			require.Contains(t, builder.Args, orgID)
-			require.Contains(t, builder.Args, projectID)
-			require.Len(t, builder.Args, 2, "only tenant IDs should be bound; SQL expressions must remain in the predicate")
+			require.Contains(t, sql, " AND ", "both tenant predicates must be joined with AND: %s", sql)
+			require.Contains(t, args, orgID)
+			require.Contains(t, args, projectID)
+			require.Len(t, args, 2, "only tenant IDs should be bound; SQL expressions must remain in the predicate")
 		})
 	}
 }
