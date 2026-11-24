@@ -2439,7 +2439,7 @@ func (t *telemetryMetaStore) FetchTemporalityAndTypeMulti(ctx context.Context, o
 
 	temporalities := make(map[string]metrictypes.Temporality)
 	types := make(map[string]metrictypes.Type)
-	metricsTemporality, metricTypes, reduced, err := t.fetchMetricsTemporalityAndType(ctx, queryTimeRangeStartTs, queryTimeRangeEndTs, reductionEnabled, metricNames...)
+	metricsTemporality, metricTypes, reduced, err := t.fetchMetricsTemporalityAndType(ctx, orgID, queryTimeRangeStartTs, queryTimeRangeEndTs, reductionEnabled, metricNames...)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -2473,7 +2473,7 @@ func (t *telemetryMetaStore) FetchTemporalityAndTypeMulti(ctx context.Context, o
 	return temporalities, types, reduced, nil
 }
 
-func (t *telemetryMetaStore) fetchMetricsTemporalityAndType(ctx context.Context, queryTimeRangeStartTs, queryTimeRangeEndTs uint64, reductionEnabled bool, metricNames ...string) (map[string][]metrictypes.Temporality, map[string]metrictypes.Type, map[string]bool, error) {
+func (t *telemetryMetaStore) fetchMetricsTemporalityAndType(ctx context.Context, orgID valuer.UUID, queryTimeRangeStartTs, queryTimeRangeEndTs uint64, reductionEnabled bool, metricNames ...string) (map[string][]metrictypes.Temporality, map[string]metrictypes.Type, map[string]bool, error) {
 	ctx = ctxtypes.NewContextWithCommentVals(ctx, map[string]string{
 		instrumentationtypes.TelemetrySignal:  telemetrytypes.SignalMetrics.StringValue(),
 		instrumentationtypes.CodeNamespace:    "metadata",
