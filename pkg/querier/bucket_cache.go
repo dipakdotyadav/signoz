@@ -603,6 +603,11 @@ func (bc *bucketCache) mergeTimeSeriesValues(ctx context.Context, buckets []*qbt
 	result := &qbtypes.TimeSeriesData{
 		Aggregations: make([]*qbtypes.AggregationBucket, 0, len(aggMap)),
 	}
+	if len(decodedTimeSeriesData) > 0 {
+		// QueryName is query-level metadata, not part of an aggregation.
+		// Preserve it when rebuilding a cached result from its time buckets.
+		result.QueryName = decodedTimeSeriesData[0].QueryName
+	}
 
 	for index, seriesList := range aggMap {
 		// Sort values by timestamp for each series
