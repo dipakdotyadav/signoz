@@ -226,7 +226,7 @@ func TestBuildGetPromotedPathsQueryTenantIsolation(t *testing.T) {
 	}
 
 	queryA, argsA := buildGetPromotedPathsQuery(entry, scopeA, "http.method", "http.status"+telemetrytypes.ArraySep+"0")
-	queryB, argsB := buildGetPromotedPathsQuery(entry, scopeB, "http.method", "http.status"+telemetrytypes.ArraySep+"0")
+	_, argsB := buildGetPromotedPathsQuery(entry, scopeB, "http.method", "http.status"+telemetrytypes.ArraySep+"0")
 	legacyQuery, legacyArgs := buildGetPromotedPathsQuery(entry, nil, "http.method")
 
 	require.Contains(t, queryA, TenantPromotedPathsTableName)
