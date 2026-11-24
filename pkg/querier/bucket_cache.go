@@ -797,7 +797,9 @@ func (bc *bucketCache) trimResultToFluxBoundary(result *qbtypes.Result, fluxBoun
 	case result.Type.IsBuiltFromTimeSeries():
 		// Trim time series data
 		if tsData, ok := result.Value.(*qbtypes.TimeSeriesData); ok && tsData != nil {
-			trimmedData := &qbtypes.TimeSeriesData{}
+			trimmedData := &qbtypes.TimeSeriesData{
+				QueryName: tsData.QueryName,
+			}
 
 			for _, aggBucket := range tsData.Aggregations {
 				// Meta has to survive the trim: a heatmap's counts are
