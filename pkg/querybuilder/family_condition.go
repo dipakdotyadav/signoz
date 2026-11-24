@@ -110,53 +110,55 @@ func OperatorCondition(
 	value any,
 	sb *sqlbuilder.SelectBuilder,
 ) (string, error) {
+	// The read is already a SQL expression produced by the storage. Escape it
+	// as SQL rather than passing it to a sqlbuilder comparison helper, which
+	// treats both arguments as values and binds the expression as $n.
+	fieldExpr := sqlbuilder.Escape(read)
+	bind := sb.Var
+
 	switch operator {
 	case qbtypes.FilterOperatorEqual:
-		return sb.E(read, value), nil
+		return fmt.Sprintf("%s = %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorNotEqual:
-		return sb.NE(read, value), nil
+		return fmt.Sprintf("%s != %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorGreaterThan:
-		return sb.G(read, value), nil
+		return fmt.Sprintf("%s > %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorGreaterThanOrEq:
-		return sb.GE(read, value), nil
+		return fmt.Sprintf("%s >= %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorLessThan:
-		return sb.LT(read, value), nil
+		return fmt.Sprintf("%s < %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorLessThanOrEq:
-		return sb.LE(read, value), nil
+		return fmt.Sprintf("%s <= %s", fieldExpr, bind(value)), nil
 
 	case qbtypes.FilterOperatorLike:
-		return sb.Like(read, value), nil
+		return fmt.Sprintf("%s LIKE %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorNotLike:
-		return sb.NotLike(read, value), nil
+		return fmt.Sprintf("%s NOT LIKE %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorILike:
-		return sb.ILike(read, value), nil
+		return fmt.Sprintf("%s ILIKE %s", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorNotILike:
-		return sb.NotILike(read, value), nil
+		return fmt.Sprintf("%s NOT ILIKE %s", fieldExpr, bind(value)), nil
 
 	case qbtypes.FilterOperatorContains:
-		return sb.ILike(read, fmt.Sprintf("%%%s%%", value)), nil
+		return fmt.Sprintf("%s ILIKE %s", fieldExpr, bind(fmt.Sprintf("%%%v%%", value))), nil
 	case qbtypes.FilterOperatorNotContains:
-		return sb.NotILike(read, fmt.Sprintf("%%%s%%", value)), nil
+		return fmt.Sprintf("%s NOT ILIKE %s", fieldExpr, bind(fmt.Sprintf("%%%v%%", value))), nil
 
 	case qbtypes.FilterOperatorRegexp:
-		// Note: Escape $$ to $$$$ to avoid sqlbuilder interpreting materialized $ signs
-		// Only needed because we are using sprintf instead of sb.Match (not implemented in sqlbuilder)
-		return fmt.Sprintf(`match(%s, %s)`, sqlbuilder.Escape(read), sb.Var(value)), nil
+		return fmt.Sprintf("match(%s, %s)", fieldExpr, bind(value)), nil
 	case qbtypes.FilterOperatorNotRegexp:
-		return fmt.Sprintf(`NOT match(%s, %s)`, sqlbuilder.Escape(read), sb.Var(value)), nil
+		return fmt.Sprintf("NOT match(%s, %s)", fieldExpr, bind(value)), nil
 
-	case qbtypes.FilterOperatorBetween:
+	case qbtypes.FilterOperatorBetween, qbtypes.FilterOperatorNotBetween:
 		values, ok := value.([]any)
 		if !ok || len(values) != 2 {
 			return "", qbtypes.ErrBetweenValues
 		}
-		return sb.Between(read, values[0], values[1]), nil
-	case qbtypes.FilterOperatorNotBetween:
-		values, ok := value.([]any)
-		if !ok || len(values) != 2 {
-			return "", qbtypes.ErrBetweenValues
+		operatorSQL := "BETWEEN"
+		if operator == qbtypes.FilterOperatorNotBetween {
+			operatorSQL = "NOT BETWEEN"
 		}
-		return sb.NotBetween(read, values[0], values[1]), nil
+		return fmt.Sprintf("%s %s %s AND %s", fieldExpr, operatorSQL, bind(values[0]), bind(values[1])), nil
 
 	// exists and not exists are key membership checks, so the storage's
 	// presence test answers them

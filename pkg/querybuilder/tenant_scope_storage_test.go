@@ -63,6 +63,7 @@ func TestProjectTenantPredicatesCompileForEverySignalStorage(t *testing.T) {
 			require.True(t, strings.Contains(prepared.Expr, " AND "), "both tenant predicates must be joined with AND: %s", prepared.Expr)
 			require.Contains(t, builder.Args, orgID)
 			require.Contains(t, builder.Args, projectID)
+			require.Len(t, builder.Args, 2, "only tenant IDs should be bound; SQL expressions must remain in the predicate")
 		})
 	}
 }
