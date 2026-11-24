@@ -885,6 +885,7 @@ func (bc *bucketCache) filterResultToTimeRange(result *qbtypes.Result, q qbtypes
 	case result.Type.IsBuiltFromTimeSeries():
 		if tsData, ok := result.Value.(*qbtypes.TimeSeriesData); ok {
 			filteredData := &qbtypes.TimeSeriesData{
+				QueryName:    tsData.QueryName,
 				Aggregations: make([]*qbtypes.AggregationBucket, 0, len(tsData.Aggregations)),
 			}
 
