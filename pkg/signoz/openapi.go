@@ -31,6 +31,8 @@ import (
 	"github.com/SigNoz/signoz/pkg/modules/metricsexplorer"
 	"github.com/SigNoz/signoz/pkg/modules/organization"
 	"github.com/SigNoz/signoz/pkg/modules/preference"
+	"github.com/SigNoz/signoz/pkg/modules/project"
+	"github.com/SigNoz/signoz/pkg/modules/projectingestionkey"
 	"github.com/SigNoz/signoz/pkg/modules/promote"
 	"github.com/SigNoz/signoz/pkg/modules/quickfilter"
 	"github.com/SigNoz/signoz/pkg/modules/rawdataexport"
@@ -69,6 +71,8 @@ func NewOpenAPI(ctx context.Context, instrumentation instrumentation.Instrumenta
 		struct{ organization.Getter }{},
 		struct{ authz.AuthZ }{},
 		struct{ organization.Handler }{},
+		struct{ project.Handler }{},
+		struct{ projectingestionkey.Handler }{},
 		struct{ user.Handler }{},
 		struct{ session.Handler }{},
 		struct{ authdomain.Handler }{},
