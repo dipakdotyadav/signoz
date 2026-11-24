@@ -2,7 +2,6 @@ package querybuilder_test
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/SigNoz/signoz/pkg/querybuilder"
