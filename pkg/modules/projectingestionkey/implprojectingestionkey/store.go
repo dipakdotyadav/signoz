@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/SigNoz/signoz/pkg/modules/projectingestionkey"
 	"github.com/SigNoz/signoz/pkg/sqlstore"
 	"github.com/SigNoz/signoz/pkg/types"
 	"github.com/SigNoz/signoz/pkg/valuer"
