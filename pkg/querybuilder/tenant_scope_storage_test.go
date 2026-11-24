@@ -63,9 +63,11 @@ func TestProjectTenantPredicatesCompileForEverySignalStorage(t *testing.T) {
 				require.Contains(t, sql, fragment)
 			}
 			require.Contains(t, sql, " AND ", "both tenant predicates must be joined with AND: %s", sql)
-			require.Contains(t, args, orgID)
-			require.Contains(t, args, projectID)
-			require.Len(t, args, 2, "only tenant IDs should be bound; SQL expressions must remain in the predicate")
+			// Resource reads can reference the same tenant key through both the
+			// JSON and map-backed storage expressions. The builder therefore
+			// emits each tenant value twice; no other values should be bound.
+			require.ElementsMatch(t, []any{orgID, orgID, projectID, projectID}, args)
+			require.Len(t, args, 4)
 		})
 	}
 }
