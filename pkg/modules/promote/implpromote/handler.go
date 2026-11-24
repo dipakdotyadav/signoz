@@ -53,8 +53,7 @@ func (h *handler) PromotePaths(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.module.PromotePaths(r.Context(), req...)
-	if err != nil {
+	if err := h.module.PromotePaths(r.Context(), req...); err != nil {
 		render.Error(w, err)
 		return
 	}
