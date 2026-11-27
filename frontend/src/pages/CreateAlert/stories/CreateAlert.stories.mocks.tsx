@@ -6,6 +6,9 @@
 import { RuletypesRuleTypeDTO } from 'api/generated/services/sigNoz.schemas';
 import { QueryParams } from 'constants/query';
 import ROUTES from 'constants/routes';
+import { getCreateAlertLink } from 'container/ExplorerActions/utils';
+import { DEFAULT_PANEL_TYPE } from 'container/LLMObservability/Explorer/constants';
+import { getAlertQuery } from 'container/LLMObservability/Explorer/explorerUtils';
 import { rest } from 'msw';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { AlertTypes } from 'types/api/alerts/alertTypes';
@@ -24,17 +27,20 @@ import {
 	notificationChannelsResponse,
 	CHANNEL_MAX,
 } from '../../AlertList/stories/__story_mockdata__/alerts';
+import { aiExplorerQuery } from '../../LLMObservability/Explorer/stories/__story_mockdata__/explorer';
 
 /**
  * Which alert the page is building. The page reads this off the URL, so the
- * control is a route rather than a response: with no type at all it stays on
- * the picker and everything else opens the form.
+ * control is a route rather than a response: with neither a type nor a query it
+ * stays on the picker and everything else opens the form.
  */
 const ALERT_MODES = [
 	'select-type',
 	'metrics',
 	'logs',
 	'traces',
+	'ai-traces',
+	'ai-traces-explorer',
 	'exceptions',
 	'anomaly',
 ] as const;
@@ -45,11 +51,20 @@ const ALERT_TYPE_BY_MODE: Partial<Record<AlertMode, AlertTypes>> = {
 	metrics: AlertTypes.METRICS_BASED_ALERT,
 	logs: AlertTypes.LOGS_BASED_ALERT,
 	traces: AlertTypes.TRACES_BASED_ALERT,
+	'ai-traces': AlertTypes.AI_TRACES_BASED_ALERT,
 	exceptions: AlertTypes.EXCEPTIONS_BASED_ALERT,
 	anomaly: AlertTypes.METRICS_BASED_ALERT,
 };
 
 const routeFor = (mode: AlertMode): string => {
+	// The AI explorer's Create an alert sends only the query; the page reads the type off it.
+	if (mode === 'ai-traces-explorer') {
+		return getCreateAlertLink({
+			query: getAlertQuery(aiExplorerQuery(), DEFAULT_PANEL_TYPE),
+			panelType: DEFAULT_PANEL_TYPE,
+		});
+	}
+
 	const alertType = ALERT_TYPE_BY_MODE[mode];
 
 	if (!alertType) {
@@ -171,7 +186,7 @@ export const fillValidAlert = async (
 	const canvas = within(canvasElement);
 
 	await userEvent.type(
-		await canvas.findByTestId('alert-name-input', undefined, untilLoaded),
+		await canvas.findByTestId('alert-name-input-field', undefined, untilLoaded),
 		'Toast alert',
 	);
 	const channels = await canvas.findByTestId(
@@ -191,9 +206,9 @@ export const clickFooterButton = async (
 ): Promise<void> => {
 	const button = await within(canvasElement).findByTestId(testId);
 
-	await waitFor(() => {
-		expect(button).toBeEnabled();
-		expect(button).not.toHaveAttribute('aria-disabled', 'true');
+	await waitFor(async () => {
+		await expect(button).toBeEnabled();
+		await expect(button).not.toHaveAttribute('aria-disabled', 'true');
 	});
 	await userEvent.click(button);
 };

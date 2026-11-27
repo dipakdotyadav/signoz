@@ -168,7 +168,7 @@ describe('QueryAddOns', () => {
 			/>,
 		);
 
-		const input = screen.getByTestId('input-Limit') as HTMLInputElement;
+		const input = screen.getByTestId('input-Limit-field') as HTMLInputElement;
 		expect(screen.getByTestId('limit-content')).toBeInTheDocument();
 		expect(input.value).toBe('5');
 
@@ -184,8 +184,8 @@ describe('QueryAddOns', () => {
 	});
 
 	it.each([
-		[QueryBuilderField.Limit, 'input-Limit', 'placeholder'],
-		[QueryBuilderField.Legend, 'input-Legend format', 'placeholder'],
+		[QueryBuilderField.Limit, 'input-Limit-field', 'placeholder'],
+		[QueryBuilderField.Legend, 'input-Legend format-field', 'placeholder'],
 		[QueryBuilderField.GroupBy, 'groupby', 'data-placeholder'],
 		[QueryBuilderField.Having, 'having-change', 'data-placeholder'],
 		[QueryBuilderField.OrderBy, 'orderby', 'data-placeholder'],
@@ -226,7 +226,7 @@ describe('QueryAddOns', () => {
 
 		fireEvent.click(screen.getByTestId('query-add-on-limit'));
 
-		expect(screen.getByTestId('input-Limit')).toHaveAttribute(
+		expect(screen.getByTestId('input-Limit-field')).toHaveAttribute(
 			'placeholder',
 			'Enter limit',
 		);
@@ -260,7 +260,7 @@ describe('QueryAddOns', () => {
 		it('is open with its default as the placeholder', () => {
 			renderPinnedLimit();
 
-			expect(screen.getByTestId('input-Limit')).toHaveAttribute(
+			expect(screen.getByTestId('input-Limit-field')).toHaveAttribute(
 				'placeholder',
 				'Default 10',
 			);
@@ -278,7 +278,7 @@ describe('QueryAddOns', () => {
 
 			renderPinnedLimit();
 
-			expect(screen.getByTestId('input-Limit')).toHaveAttribute(
+			expect(screen.getByTestId('input-Limit-field')).toHaveAttribute(
 				'placeholder',
 				'Enter limit',
 			);
@@ -296,7 +296,7 @@ describe('QueryAddOns', () => {
 
 			renderPinnedLimit();
 
-			expect(screen.getByTestId('input-Limit')).toHaveAttribute(
+			expect(screen.getByTestId('input-Limit-field')).toHaveAttribute(
 				'placeholder',
 				'Enter limit',
 			);
@@ -321,7 +321,9 @@ describe('QueryAddOns', () => {
 		);
 
 		expect(screen.getByTestId('order-by-content')).toBeInTheDocument();
-		const limitInput = screen.getByTestId('input-Limit') as HTMLInputElement;
+		const limitInput = screen.getByTestId(
+			'input-Limit-field',
+		) as HTMLInputElement;
 		expect(screen.getByTestId('limit-content')).toBeInTheDocument();
 		expect(limitInput.value).toBe('7');
 	});
@@ -359,7 +361,7 @@ describe('QueryAddOns', () => {
 	});
 
 	it('calls handleSetQueryData when reduce-to value changes', async () => {
-		const user = userEvent.setup({ pointerEventsCheck: 0 });
+		const user = userEvent.setup();
 		const query = baseQuery({
 			reduceTo: ReduceOperators.AVG,
 			aggregations: [
@@ -504,7 +506,7 @@ describe('QueryAddOns', () => {
 			);
 		}
 
-		it('is offered on a metrics heatmap only', () => {
+		it('is offered on a metrics heatmap', () => {
 			renderHeatmap();
 
 			expect(
@@ -530,23 +532,16 @@ describe('QueryAddOns', () => {
 			).not.toBeInTheDocument();
 		});
 
-		it('is not offered on a heatmap over another signal', () => {
-			render(
-				<QueryAddOns
-					query={baseQuery({ dataSource: DataSource.LOGS })}
-					version="v5"
-					isRawQuery={false}
-					showReduceTo={false}
-					panelType={PANEL_TYPES.HEATMAP}
-					index={0}
-					isForTraceOperator={false}
-				/>,
-			);
+		it.each([DataSource.LOGS, DataSource.TRACES])(
+			'is offered on a %s heatmap',
+			(dataSource) => {
+				renderHeatmap({ dataSource });
 
-			expect(
-				screen.queryByTestId('query-add-on-bucket_options'),
-			).not.toBeInTheDocument();
-		});
+				expect(
+					screen.getByTestId('query-add-on-bucket_options'),
+				).toBeInTheDocument();
+			},
+		);
 
 		it.each([ATTRIBUTE_TYPES.HISTOGRAM, ATTRIBUTE_TYPES.EXPONENTIAL_HISTOGRAM])(
 			'is not offered for a %s metric, which carries its own buckets',
@@ -651,7 +646,7 @@ describe('QueryAddOns', () => {
 			renderHeatmap({ bucketOptions: { kind: 'log', spec: { scale: 0 } } });
 
 			await user.click(screen.getByRole('button', { name: 'Linear' }));
-			await user.type(screen.getByTestId('bucket-options-max-value'), '500');
+			await user.type(screen.getByTestId('bucket-options-max-value-field'), '500');
 
 			await waitFor(() => {
 				expect(mockHandleChangeQueryData).toHaveBeenLastCalledWith(

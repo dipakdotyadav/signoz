@@ -11,9 +11,9 @@ const config: Config.InitialOptions = {
 	coverageReporters: ['text', 'cobertura', 'html', 'json-summary'],
 	collectCoverageFrom: ['src/**/*.{ts,tsx}'],
 	moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
-	modulePathIgnorePatterns: ['dist'],
+	modulePathIgnorePatterns: ['<rootDir>/dist/'],
 	moduleNameMapper: {
-		'\\.(png|jpg|jpeg|gif|svg|webp|avif|ico|bmp|tiff)$':
+		'\\.(png|jpg|jpeg|gif|svg|webp|avif|ico|bmp|tiff|wav)$':
 			'<rootDir>/__mocks__/fileMock.ts',
 		// The icon glob module uses `import.meta.glob` (Vite-only); jest can't parse
 		// it, so redirect any import of it to a stub.
@@ -36,6 +36,8 @@ const config: Config.InitialOptions = {
 		'^test-mocks/(.*)$': '<rootDir>/__mocks__/$1',
 		'^react-syntax-highlighter/dist/esm/(.*)$':
 			'<rootDir>/node_modules/react-syntax-highlighter/dist/cjs/$1',
+		// `antd` resolves to lib/ here; es/ deep imports must share its module instances (contexts).
+		'^antd/es/(.*)$': '<rootDir>/node_modules/antd/lib/$1',
 		'^@signozhq/(?!ui(?:/|$))([^/]+)$':
 			'<rootDir>/node_modules/@signozhq/$1/dist/$1.js',
 	},
@@ -65,6 +67,8 @@ const config: Config.InitialOptions = {
 	testPathIgnorePatterns: ['/node_modules/', '/public/'],
 	moduleDirectories: ['node_modules', 'src'],
 	testEnvironment: '<rootDir>/jest.environment.cjs',
+	// Local only: the default (cores - 1) workers exhaust RAM when several runs overlap.
+	...(process.env.CI ? {} : { maxWorkers: 4, workerIdleMemoryLimit: '1GB' }),
 	coverageThreshold: {
 		global: {
 			statements: 80,

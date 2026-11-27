@@ -4,11 +4,16 @@
  */
 
 import { rest } from 'msw';
+import { Querybuildertypesv5RequestTypeDTO } from 'api/generated/services/sigNoz.schemas';
+import { AVAILABLE_EXPORT_PANEL_TYPES } from 'constants/panelTypes';
 import ROUTES from 'constants/routes';
+import { getExportQuery } from 'container/LLMObservability/Explorer/explorerUtils';
+import { buildDashboardReadPermission } from 'lib/authz/hooks/useAuthZ/permissions/dashboard.permissions';
 import { buildRoutePath } from 'lib/router/buildRoutePath';
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import type { QueryRangeRequestV5 } from 'types/api/v5/queryRange';
 
+import { grantsAll } from '@/storybook/access/access';
 import { choiceControl, toggleControl } from '@/storybook/controls/controls';
 import { defineStoryMocks } from '@/storybook/controls/defineStoryMocks';
 import {
@@ -19,11 +24,15 @@ import {
 	listMetricsResponse,
 	metricMetadataResponse,
 } from '@/storybook/msw/__story_mockdata__/metrics';
+import type { PageStoryArgs } from '@/storybook/runtime/resolveStory';
 
+import { aiExplorerQuery } from '../../../LLMObservability/Explorer/stories/__story_mockdata__/explorer';
 import {
+	buildExportPanelLink,
 	NEW_PANEL_ID,
 	newPanelSearch,
 } from '../../DashboardContainer/PanelEditor/newPanelRoute';
+import { PANEL_KIND_TO_PANEL_TYPE } from '../../DashboardContainer/Panels/types/panelKind';
 import {
 	API_RESULTS,
 	settle,
@@ -32,6 +41,8 @@ import {
 import {
 	currentDashboardDocument,
 	PANEL_IDS,
+	type PanelId,
+	panelQueryShape,
 	patchDashboardDocument,
 	seedDashboardDocument,
 	STORY_DASHBOARD_ID,
@@ -50,6 +61,7 @@ import {
 	EDITOR_METRICS,
 	NEW_PANEL_KINDS,
 	newPanelKindOf,
+	numericFieldKeysResponse,
 	type NewPanelKind,
 } from './__story_mockdata__/panelEditor';
 
@@ -60,15 +72,32 @@ const PANEL_OPTIONS = [...PANEL_IDS, NEW_PANEL_ID] as const;
 
 type PanelOption = (typeof PANEL_OPTIONS)[number];
 
-const editorRoute = (panel: PanelOption, kind: NewPanelKind): string => {
+const editorRoute = (
+	panel: PanelOption,
+	kind: NewPanelKind,
+	aiExplorerExport: boolean,
+): string => {
 	const path = buildRoutePath(ROUTES.DASHBOARD_PANEL_EDITOR, {
 		dashboardId: STORY_DASHBOARD_ID,
 		panelId: panel,
 	});
 
-	return panel === NEW_PANEL_ID
-		? `${path}${newPanelSearch(newPanelKindOf(kind))}`
-		: path;
+	if (panel !== NEW_PANEL_ID) {
+		return path;
+	}
+
+	const panelKind = newPanelKindOf(kind);
+	const panelType = PANEL_KIND_TO_PANEL_TYPE[panelKind];
+	const exportLink =
+		aiExplorerExport && AVAILABLE_EXPORT_PANEL_TYPES.includes(panelType)
+			? buildExportPanelLink({
+					dashboardId: STORY_DASHBOARD_ID,
+					panelType,
+					query: getExportQuery(aiExplorerQuery(), panelType),
+				})
+			: null;
+
+	return exportLink ?? `${path}${newPanelSearch(panelKind)}`;
 };
 
 export const panelEditorMocks = defineStoryMocks({
@@ -85,6 +114,12 @@ export const panelEditorMocks = defineStoryMocks({
 			description: 'Which kind the create route seeds. Ignored on a saved panel.',
 			options: NEW_PANEL_KINDS,
 			value: 'time-series',
+		}),
+		aiExplorerExport: toggleControl('Exported from the AI explorer', {
+			group: PANEL,
+			description:
+				"Seeds the create route with the query the AI explorer's Add to dashboard exports, so it opens on the AI Query Builder. Only the kinds it exports take it: time series, table and list.",
+			value: false,
 		}),
 		locked: toggleControl('Dashboard locked', {
 			group: PANEL,
@@ -186,7 +221,11 @@ export const panelEditorMocks = defineStoryMocks({
 
 			rest.get(
 				'http://localhost/api/v1/fields/keys',
-				response.json(() => fieldKeysResponse(EDITOR_FIELD_KEYS)),
+				response.json((req) =>
+					req.url.searchParams.get('fieldDataType') === 'number'
+						? numericFieldKeysResponse()
+						: fieldKeysResponse(EDITOR_FIELD_KEYS),
+				),
 			),
 
 			rest.get(
@@ -201,7 +240,11 @@ export const panelEditorMocks = defineStoryMocks({
 		];
 	},
 	config: (values) => ({
-		route: editorRoute(values.panel, values.newPanelKind),
+		route: editorRoute(
+			values.panel,
+			values.newPanelKind,
+			values.aiExplorerExport,
+		),
 	}),
 	effect: (values) => {
 		seedDashboardDocument({
@@ -213,6 +256,79 @@ export const panelEditorMocks = defineStoryMocks({
 	},
 });
 
+export type PanelEditorArgs = PageStoryArgs<typeof panelEditorMocks>;
+
+const SAVED_TIME_SERIES: readonly PanelId[] = ['request-rate', 'error-rate'];
+
+const NEW_PANEL_KINDS_WITHOUT_CLICKHOUSE: readonly NewPanelKind[] = [
+	'list',
+	'text',
+];
+
+const PANELS_WITHOUT_PROMQL: readonly PanelId[] = [
+	'top-endpoints',
+	'traffic-share',
+	'recent-logs',
+];
+
+const NEW_PANEL_KINDS_WITHOUT_PROMQL: readonly NewPanelKind[] = [
+	'table',
+	'pie-chart',
+	'list',
+	'text',
+];
+
+const NEW_PANEL_KINDS_WITH_SPAN_GAPS: readonly NewPanelKind[] = [
+	'time-series',
+	'area-chart',
+];
+
+/**
+ * The page mounts on `read`. A check that fails rather than denies still
+ * renders it.
+ */
+export const showsEditor = (args: PanelEditorArgs): boolean =>
+	args.authzState === 'error' ||
+	grantsAll(args, buildDashboardReadPermission(STORY_DASHBOARD_ID));
+
+/** The list and text kinds offer no ClickHouse query mode. */
+export const hasClickHouseTab = (args: PanelEditorArgs): boolean => {
+	if (!showsEditor(args)) {
+		return false;
+	}
+
+	if (args.panel === NEW_PANEL_ID) {
+		return !NEW_PANEL_KINDS_WITHOUT_CLICKHOUSE.includes(args.newPanelKind);
+	}
+
+	return (
+		panelQueryShape(args.panel).requestType !==
+		Querybuildertypesv5RequestTypeDTO.raw
+	);
+};
+
+/** Table, pie, list and text panels offer no PromQL query mode. */
+export const hasPromQLTab = (args: PanelEditorArgs): boolean => {
+	if (!showsEditor(args)) {
+		return false;
+	}
+
+	return args.panel === NEW_PANEL_ID
+		? !NEW_PANEL_KINDS_WITHOUT_PROMQL.includes(args.newPanelKind)
+		: !PANELS_WITHOUT_PROMQL.includes(args.panel);
+};
+
+/** Only the time series and area kinds offer "When data is missing". */
+export const hasDisconnectValues = (args: PanelEditorArgs): boolean => {
+	if (!showsEditor(args)) {
+		return false;
+	}
+
+	return args.panel === NEW_PANEL_ID
+		? NEW_PANEL_KINDS_WITH_SPAN_GAPS.includes(args.newPanelKind)
+		: SAVED_TIME_SERIES.includes(args.panel);
+};
+
 export const savePanel = async (): Promise<void> => {
 	const save = await screen.findByTestId(
 		'panel-editor-v2-save',
@@ -221,9 +337,9 @@ export const savePanel = async (): Promise<void> => {
 	);
 
 	await waitFor(
-		() => {
-			expect(save).toBeEnabled();
-			expect(save).not.toHaveAttribute('aria-disabled', 'true');
+		async () => {
+			await expect(save).toBeEnabled();
+			await expect(save).not.toHaveAttribute('aria-disabled', 'true');
 		},
 		{ timeout: 10000 },
 	);

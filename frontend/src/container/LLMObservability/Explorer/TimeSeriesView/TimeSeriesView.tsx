@@ -5,6 +5,7 @@ import {
 	useEffect,
 	useMemo,
 } from 'react';
+import { QueryKey } from 'react-query';
 // eslint-disable-next-line no-restricted-imports
 import { useSelector } from 'react-redux';
 import { ENTITY_VERSION_V5 } from 'constants/app';
@@ -15,11 +16,14 @@ import { convertDataValueToMs } from 'container/TimeSeriesView/utils';
 import { useGetQueryRange } from 'hooks/queryBuilder/useGetQueryRange';
 import { useQueryBuilder } from 'hooks/queryBuilder/useQueryBuilder';
 import useUrlYAxisUnit from 'hooks/useUrlYAxisUnit';
+import { getActiveBuilder } from 'lib/query/builderSlot';
 import { AppState } from 'store/reducers';
 import { Warning } from 'types/api';
 import APIError from 'types/api/error';
 import { DataSource } from 'types/common/queryBuilder';
 import { GlobalReducer } from 'types/reducer/globalTime';
+
+import AIExplorerActions from '../AIExplorerActions/AIExplorerActions';
 
 import './TimeSeriesView.styles.scss';
 
@@ -35,7 +39,7 @@ function TimeSeriesViewContainer({
 	const isValidToConvertToMs = useMemo(() => {
 		const isValid: boolean[] = [];
 
-		currentQuery.builder.queryData.forEach(
+		getActiveBuilder(currentQuery).queryData.forEach(
 			({ aggregateAttribute, aggregateOperator }) => {
 				const isExistDurationNanoAttribute =
 					aggregateAttribute?.key === 'durationNano' ||
@@ -127,6 +131,7 @@ function TimeSeriesViewContainer({
 				setWarning={setWarning}
 				allowExport
 				exportFileName="ai-traces-timeseries"
+				headerActions={<AIExplorerActions panelType={PANEL_TYPES.TIME_SERIES} />}
 			/>
 		</div>
 	);
@@ -137,7 +142,7 @@ interface TimeSeriesViewProps {
 	isFilterApplied: boolean;
 	setWarning: Dispatch<SetStateAction<Warning | undefined>>;
 	setIsLoadingQueries: Dispatch<SetStateAction<boolean>>;
-	queryKeyRef?: MutableRefObject<any>;
+	queryKeyRef?: MutableRefObject<QueryKey | undefined>;
 }
 
 TimeSeriesViewContainer.defaultProps = {

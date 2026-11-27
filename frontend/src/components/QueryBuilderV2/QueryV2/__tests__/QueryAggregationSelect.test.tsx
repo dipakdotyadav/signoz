@@ -9,12 +9,17 @@ import {
 import { ENVIRONMENT } from 'constants/env';
 import { initialQueriesMap } from 'constants/queryBuilder';
 import { rest, server } from 'mocks-server/server';
-import { render, screen, userEvent, waitFor } from 'tests/test-utils';
-import type { IBuilderQuery } from 'types/api/queryBuilder/queryBuilderData';
+import { render, screen, userEvent, within } from 'tests/test-utils';
+import type {
+	IBuilderQuery,
+	Query,
+} from 'types/api/queryBuilder/queryBuilderData';
+import { EQueryType } from 'types/common/dashboard';
 
 import { QueryBuilderV2Provider } from '../../QueryBuilderV2Context';
 import QueryAggregationSelect from '../QueryAggregation/QueryAggregationSelect';
 import { mockCodeMirrorDomApis } from './codemirrorDomMocks';
+import { findCompletionOption } from './findCompletionOption';
 
 const EDITOR_TEST_ID = 'query-aggregation-editor';
 // CodeMirror's suggestion popup is slow to open under a parallel jest run.
@@ -107,20 +112,23 @@ beforeEach(() => {
 	);
 });
 
-async function enterAggregation(text: string): Promise<void> {
-	const user = userEvent.setup({ pointerEventsCheck: 0 });
+async function enterAggregation(
+	text: string,
+	queryData: IBuilderQuery = aiQuery,
+	currentQuery?: Query,
+): Promise<void> {
+	const user = userEvent.setup();
 	render(
 		<QueryBuilderV2Provider>
-			<QueryAggregationSelect queryData={aiQuery} />
+			<QueryAggregationSelect queryData={queryData} />
 		</QueryBuilderV2Provider>,
+		undefined,
+		{ queryBuilderOverrides: currentQuery && { currentQuery } },
 	);
 
-	const content = (
-		await screen.findByTestId(EDITOR_TEST_ID)
-	).querySelector<HTMLElement>('.cm-content');
-	if (!content) {
-		throw new Error('CodeMirror content element not rendered');
-	}
+	const content = within(await screen.findByTestId(EDITOR_TEST_ID)).getByRole(
+		'textbox',
+	);
 	await user.click(content);
 	// Typed keys drop under load: a re-render's dispatch discards DOM input CodeMirror hasn't read yet.
 	await user.paste(text);
@@ -128,10 +136,10 @@ async function enterAggregation(text: string): Promise<void> {
 }
 
 function suggestionLabels(): string[] {
-	return Array.from(
-		screen.getByTestId(EDITOR_TEST_ID).querySelectorAll('.cm-completionLabel'),
-		(label) => label.textContent ?? '',
-	).sort();
+	return within(screen.getByTestId(EDITOR_TEST_ID))
+		.queryAllByRole('option')
+		.map((option) => option.textContent ?? '')
+		.sort();
 }
 
 describe('QueryAggregationSelect field suggestions for an AI query', () => {
@@ -151,9 +159,10 @@ describe('QueryAggregationSelect field suggestions for an AI query', () => {
 		async ({ aggregation, fieldDataType, labels }) => {
 			await enterAggregation(aggregation);
 
-			await waitFor(() => expect(suggestionLabels()).toStrictEqual(labels), {
+			await findCompletionOption(EDITOR_TEST_ID, 'trace.total_tokens', {
 				timeout: SUGGESTIONS_TIMEOUT_MS,
 			});
+			expect(suggestionLabels()).toStrictEqual(labels);
 			expect(keysRequests).toHaveLength(0);
 			expect(
 				aiKeysRequests.map((params) => ({
@@ -162,6 +171,27 @@ describe('QueryAggregationSelect field suggestions for an AI query', () => {
 					fieldContext: params.get('fieldContext'),
 				})),
 			).toStrictEqual([{ signal: 'traces', fieldDataType, fieldContext: null }]);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'uses the AI keys endpoint for an untagged query on the AI query type',
+		async () => {
+			await enterAggregation(
+				'avg(',
+				{ ...aiQuery, builderQueryType: undefined },
+				{ ...initialQueriesMap.traces, queryType: EQueryType.AI_QUERY_BUILDER },
+			);
+
+			await findCompletionOption(EDITOR_TEST_ID, 'trace.total_tokens', {
+				timeout: SUGGESTIONS_TIMEOUT_MS,
+			});
+			expect(suggestionLabels()).toStrictEqual([
+				'duration_nano',
+				'trace.total_tokens',
+			]);
+			expect(keysRequests).toHaveLength(0);
 		},
 		TEST_TIMEOUT_MS,
 	);

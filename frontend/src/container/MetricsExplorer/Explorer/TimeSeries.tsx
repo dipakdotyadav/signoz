@@ -3,8 +3,9 @@ import { useQueries, useQueryClient } from 'react-query';
 // eslint-disable-next-line no-restricted-imports
 import { useSelector } from 'react-redux';
 import { Color } from '@signozhq/design-tokens';
-import { toast } from '@signozhq/ui/sonner';
+import { toast } from '@signozhq/ui/toast';
 import { Button, Tooltip } from 'antd';
+import { Button as SignozButton } from '@signozhq/ui/button';
 import { Typography } from '@signozhq/ui/typography';
 import {
 	invalidateGetMetricMetadata,
@@ -20,6 +21,7 @@ import { initialQueriesMap, PANEL_TYPES } from 'constants/queryBuilder';
 import { MAX_QUERY_RETRIES } from 'constants/reactQuery';
 import { REACT_QUERY_KEY } from 'constants/reactQueryKeys';
 import ExplorerActions from 'container/ExplorerActions/ExplorerActions';
+import { ExplorerActionsSource } from 'container/ExplorerActions/utils';
 import TimeSeriesView from 'container/TimeSeriesView/TimeSeriesView';
 import { convertDataValueToMs } from 'container/TimeSeriesView/utils';
 import { useQueryBuilder } from 'hooks/queryBuilder/useQueryBuilder';
@@ -207,7 +209,7 @@ function TimeSeries({
 						});
 					},
 					onError: () => {
-						toast.error('Failed to save unit');
+						toast.danger('Failed to save unit', { action: { label: 'Dismiss' } });
 					},
 				},
 			);
@@ -227,16 +229,32 @@ function TimeSeries({
 						/>
 						{showSaveUnitButton && (
 							<div className="save-unit-container">
-								<Typography.Text>
+								<Typography
+									variant="paragraph"
+									size="base"
+									weight="regular"
+									color="inherit"
+									as="span"
+									textOverflow="wrap"
+								>
 									Set the selected unit as the metric unit?
-								</Typography.Text>
+								</Typography>
 								<Button
 									type="primary"
 									size="small"
 									disabled={isUpdatingMetricMetadata}
 									onClick={handleSaveUnit}
 								>
-									<Typography.Text>Yes</Typography.Text>
+									<Typography
+										variant="paragraph"
+										size="base"
+										weight="regular"
+										color="inherit"
+										as="span"
+										textOverflow="wrap"
+									>
+										Yes
+									</Typography>
 								</Button>
 							</div>
 						)}
@@ -288,15 +306,25 @@ function TimeSeries({
 									<Tooltip
 										className="no-unit-warning"
 										title={
-											<Typography.Text>
+											<Typography
+												variant="paragraph"
+												size="base"
+												weight="regular"
+												color="inherit"
+												as="span"
+												textOverflow="wrap"
+											>
 												No unit is set for this metric. You can assign one from the{' '}
-												<Typography.Link
+												<SignozButton
+													variant="link"
+													color="primary"
+													size="md"
 													onClick={(): void => handleOpenMetricDetails(metricName)}
 												>
 													metric details
-												</Typography.Link>{' '}
+												</SignozButton>{' '}
 												page.
-											</Typography.Text>
+											</Typography>
 										}
 									>
 										<TriangleAlert
@@ -320,7 +348,7 @@ function TimeSeries({
 									headerActions={
 										<ExplorerActions
 											query={stagedQuery ? exportQuery : null}
-											sourcepage={DataSource.METRICS}
+											sourcePage={ExplorerActionsSource.METRICS_EXPLORER}
 											panelType={PANEL_TYPES.TIME_SERIES}
 											isOneChartPerQuery={changeLayoutForOneChartPerQuery}
 										/>

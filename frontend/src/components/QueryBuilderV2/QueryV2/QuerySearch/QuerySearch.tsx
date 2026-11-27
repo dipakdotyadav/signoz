@@ -33,6 +33,7 @@ import {
 	queryOperatorSuggestions,
 } from 'constants/antlrQueryConstants';
 import { useDynamicVariableSuggestions } from 'hooks/dashboard/useDynamicVariableSuggestions';
+import { useBuilderQueryType } from 'hooks/queryBuilder/useBuilderQueryType';
 import { useIsDarkMode } from 'hooks/useDarkMode';
 import useDebounce from 'hooks/useDebounce';
 import { debounce, isNull } from 'lodash-es';
@@ -104,6 +105,8 @@ const stopEventsExtension = EditorView.domEventHandlers({
 	},
 });
 
+const EDITOR_BASIC_SETUP = { lineNumbers: false };
+
 interface QuerySearchProps {
 	placeholder?: string;
 	onChange: (value: string) => void;
@@ -148,6 +151,7 @@ function QuerySearch({
 	metricNamespace,
 	valueSuggestionsOverride,
 }: QuerySearchProps): JSX.Element {
+	const builderQueryType = useBuilderQueryType(queryData);
 	const isDarkMode = useIsDarkMode();
 	const [valueSuggestions, setValueSuggestions] = useState<any[]>([]);
 	const [activeKey, setActiveKey] = useState<string>('');
@@ -315,23 +319,20 @@ function QuerySearch({
 		500,
 	);
 
-	const toggleSuggestions = useCallback(
-		(timeout?: number) => {
-			const timeoutId = setTimeout(() => {
-				if (!editorRef.current) {
-					return;
-				}
-				if (isFocused) {
-					startCompletion(editorRef.current);
-				} else {
-					closeCompletion(editorRef.current);
-				}
-			}, timeout);
+	const toggleSuggestions = useCallback((timeout?: number) => {
+		const timeoutId = setTimeout(() => {
+			if (!editorRef.current) {
+				return;
+			}
+			if (editorRef.current.hasFocus) {
+				startCompletion(editorRef.current);
+			} else {
+				closeCompletion(editorRef.current);
+			}
+		}, timeout);
 
-			return (): void => clearTimeout(timeoutId);
-		},
-		[isFocused],
-	);
+		return (): void => clearTimeout(timeoutId);
+	}, []);
 
 	const fetchKeySuggestions = useCallback(
 		async (searchText?: string): Promise<void> => {
@@ -359,7 +360,7 @@ function QuerySearch({
 					source: signalSource as TelemetrytypesSourceDTO,
 					metricNamespace,
 				},
-				queryData.builderQueryType,
+				builderQueryType,
 			);
 
 			if (response.data.keys) {
@@ -397,7 +398,7 @@ function QuerySearch({
 			hardcodedAttributeKeys,
 			showFilterSuggestionsWithoutMetric,
 			metricNamespace,
-			queryData.builderQueryType,
+			builderQueryType,
 		],
 	);
 
@@ -539,7 +540,7 @@ function QuerySearch({
 								source: signalSource as TelemetrytypesSourceDTO,
 								metricName: debouncedMetricName ?? undefined,
 							},
-							queryData.builderQueryType,
+							builderQueryType,
 						).then((response) => {
 							const responseData = response.data;
 							const responseDataValues = responseData.values;
@@ -642,7 +643,7 @@ function QuerySearch({
 			signalSource,
 			toggleSuggestions,
 			valueSuggestionsOverride,
-			queryData.builderQueryType,
+			builderQueryType,
 		],
 	);
 
@@ -714,14 +715,17 @@ function QuerySearch({
 		}
 	}, []);
 
-	const handleChange = (value: string): void => {
+	const onChangeRef = useRef(onChange);
+	onChangeRef.current = onChange;
+
+	const handleChange = useCallback((value: string): void => {
 		if (isProgrammaticChangeRef.current) {
 			isProgrammaticChangeRef.current = false;
 			return;
 		}
 
-		onChange(value);
-	};
+		onChangeRef.current(value);
+	}, []);
 
 	const handleBlur = (): void => {
 		const currentExpression = getCurrentExpression();
@@ -1475,6 +1479,65 @@ function QuerySearch({
 		};
 	}
 
+	const completionSourceRef = useRef(combinedSuggestions);
+	completionSourceRef.current = combinedSuggestions;
+	const handleRunRef = useRef(handleRun);
+	handleRunRef.current = handleRun;
+
+	// Built once: new extensions reconfigure CodeMirror, which closes the open suggestions.
+	const editorExtensions = useMemo(
+		() => [
+			autocompletion({
+				override: [
+					(context: CompletionContext): CompletionResult | null =>
+						completionSourceRef.current(context),
+				],
+				defaultKeymap: true,
+				closeOnBlur: true,
+				activateOnTyping: true,
+				maxRenderedOptions: 50,
+				addToOptions: [{ render: renderRecentDeleteButton, position: 100 }],
+			}),
+			javascript({ jsx: false, typescript: false }),
+			EditorView.lineWrapping,
+			stopEventsExtension,
+			Prec.highest(
+				keymap.of([
+					...completionKeymap,
+					{
+						key: 'Escape',
+						run: closeCompletion,
+					},
+					{
+						key: 'Enter',
+						preventDefault: true,
+						// Prevent default behavior of Enter to add new line
+						// and instead run a custom action
+						run: (): boolean => true,
+					},
+					{
+						key: 'Mod-Enter',
+						preventDefault: true,
+						// Prevent default behavior of Mod-Enter to add new line
+						// and instead run a custom action
+						// Mod-Enter is usually Ctrl-Enter or Cmd-Enter based on OS
+						run: (): boolean => {
+							handleRunRef.current();
+							return true;
+						},
+					},
+					{
+						key: 'Shift-Enter',
+						preventDefault: true,
+						// Prevent default behavior of Shift-Enter to add new line
+						run: (): boolean => true,
+					},
+				]),
+			),
+		],
+		[],
+	);
+
 	// Effect to handle focus state and trigger suggestions
 	useEffect(() => {
 		const clearTimeout = toggleSuggestions(10);
@@ -1595,7 +1658,10 @@ function QuerySearch({
 					{showScopeChip && <ScopeChip expression={initialExpression ?? ''} />}
 					{isScopedFilter && !showScopeChip ? (
 						<Tooltip title={initialExpression || ''} placement="left">
-							<div className="query-search-initial-scope-label">
+							<div
+								className="query-search-initial-scope-label"
+								data-testid="query-search-initial-scope-label"
+							>
 								<Filter
 									size={14}
 									style={{
@@ -1648,56 +1714,9 @@ function QuerySearch({
 							hasErrors: validation.errors.length > 0,
 							hasInitialExpression: isScopedFilter && !showScopeChip,
 						})}
-						extensions={[
-							autocompletion({
-								override: [combinedSuggestions],
-								defaultKeymap: true,
-								closeOnBlur: true,
-								activateOnTyping: true,
-								maxRenderedOptions: 50,
-								addToOptions: [{ render: renderRecentDeleteButton, position: 100 }],
-							}),
-							javascript({ jsx: false, typescript: false }),
-							EditorView.lineWrapping,
-							stopEventsExtension,
-							Prec.highest(
-								keymap.of([
-									...completionKeymap,
-									{
-										key: 'Escape',
-										run: closeCompletion,
-									},
-									{
-										key: 'Enter',
-										preventDefault: true,
-										// Prevent default behavior of Enter to add new line
-										// and instead run a custom action
-										run: (): boolean => true,
-									},
-									{
-										key: 'Mod-Enter',
-										preventDefault: true,
-										// Prevent default behavior of Mod-Enter to add new line
-										// and instead run a custom action
-										// Mod-Enter is usually Ctrl-Enter or Cmd-Enter based on OS
-										run: (): boolean => {
-											handleRun();
-											return true;
-										},
-									},
-									{
-										key: 'Shift-Enter',
-										preventDefault: true,
-										// Prevent default behavior of Shift-Enter to add new line
-										run: (): boolean => true,
-									},
-								]),
-							),
-						]}
+						extensions={editorExtensions}
 						placeholder={placeholder}
-						basicSetup={{
-							lineNumbers: false,
-						}}
+						basicSetup={EDITOR_BASIC_SETUP}
 						onFocus={(): void => {
 							setIsFocused(true);
 						}}
